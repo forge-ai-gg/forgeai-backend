@@ -721,9 +721,6 @@ importers:
       '@elizaos/core':
         specifier: workspace:*
         version: link:../core
-      '@elizaos/plugin-birdeye':
-        specifier: workspace:*
-        version: link:../plugin-birdeye
       '@types/body-parser':
         specifier: 1.19.5
         version: 1.19.5
