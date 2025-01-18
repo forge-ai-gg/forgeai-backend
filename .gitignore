@@ -42,6 +42,7 @@ timeline_cache.json
 
 characters/*
 !characters/terra.character.json
+!characters/locke.character.json
 
 packages/core/src/providers/cache
 packages/core/src/providers/cache/*
