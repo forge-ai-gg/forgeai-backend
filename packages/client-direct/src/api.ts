@@ -1,20 +1,20 @@
-import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
+import express from "express";
 
 import {
     AgentRuntime,
     elizaLogger,
     getEnvVariable,
+    ServiceType,
     UUID,
     validateCharacterConfig,
-    ServiceType,
 } from "@elizaos/core";
 
+import { validateUuid } from "@elizaos/core";
 import { TeeLogQuery, TeeLogService } from "@elizaos/plugin-tee-log";
 import { REST, Routes } from "discord.js";
 import { DirectClient } from ".";
-import { validateUuid } from "@elizaos/core";
 
 interface UUIDParams {
     agentId: UUID;
@@ -109,14 +109,13 @@ export function createApiRouter(
         };
         if (!agentId) return;
 
-        let agent: AgentRuntime = agents.get(agentId);
+        const agent: AgentRuntime = agents.get(agentId);
 
         if (agent) {
             agent.stop();
             directClient.unregisterAgent(agent);
             res.status(204).send();
-        }
-        else {
+        } else {
             res.status(404).json({ error: "Agent not found" });
         }
     });
@@ -127,7 +126,7 @@ export function createApiRouter(
         };
         if (!agentId) return;
 
-        let agent: AgentRuntime = agents.get(agentId);
+        const agent: AgentRuntime = agents.get(agentId);
 
         // update character
         if (agent) {
@@ -203,6 +202,8 @@ export function createApiRouter(
             agentId: null,
             roomId: null,
         };
+        const { excludeEmbeddings } = req.query;
+
         if (!agentId || !roomId) return;
 
         let runtime = agents.get(agentId);
@@ -249,7 +250,7 @@ export function createApiRouter(
                             })
                         ),
                     },
-                    embedding: memory.embedding,
+                    embedding: excludeEmbeddings ? null : memory.embedding,
                     roomId: memory.roomId,
                     unique: memory.unique,
                     similarity: memory.similarity,
@@ -269,18 +270,20 @@ export function createApiRouter(
 
             for (const agentRuntime of agents.values()) {
                 const teeLogService = agentRuntime
-                    .getService<TeeLogService>(
-                    ServiceType.TEE_LOG
-                )
-                .getInstance();
+                    .getService<TeeLogService>(ServiceType.TEE_LOG)
+                    .getInstance();
 
                 const agents = await teeLogService.getAllAgents();
-                allAgents.push(...agents)
+                allAgents.push(...agents);
             }
 
             const runtime: AgentRuntime = agents.values().next().value;
-            const teeLogService = runtime.getService<TeeLogService>(ServiceType.TEE_LOG).getInstance();
-            const attestation = await teeLogService.generateAttestation(JSON.stringify(allAgents));
+            const teeLogService = runtime
+                .getService<TeeLogService>(ServiceType.TEE_LOG)
+                .getInstance();
+            const attestation = await teeLogService.generateAttestation(
+                JSON.stringify(allAgents)
+            );
             res.json({ agents: allAgents, attestation: attestation });
         } catch (error) {
             elizaLogger.error("Failed to get TEE agents:", error);
@@ -300,13 +303,13 @@ export function createApiRouter(
             }
 
             const teeLogService = agentRuntime
-                .getService<TeeLogService>(
-                ServiceType.TEE_LOG
-            )
-            .getInstance();
+                .getService<TeeLogService>(ServiceType.TEE_LOG)
+                .getInstance();
 
             const teeAgent = await teeLogService.getAgent(agentId);
-            const attestation = await teeLogService.generateAttestation(JSON.stringify(teeAgent));
+            const attestation = await teeLogService.generateAttestation(
+                JSON.stringify(teeAgent)
+            );
             res.json({ agent: teeAgent, attestation: attestation });
         } catch (error) {
             elizaLogger.error("Failed to get TEE agent:", error);
@@ -335,12 +338,16 @@ export function createApiRouter(
                 };
                 const agentRuntime: AgentRuntime = agents.values().next().value;
                 const teeLogService = agentRuntime
-                    .getService<TeeLogService>(
-                        ServiceType.TEE_LOG
-                    )
+                    .getService<TeeLogService>(ServiceType.TEE_LOG)
                     .getInstance();
-                const pageQuery = await teeLogService.getLogs(teeLogQuery, page, pageSize);
-                const attestation = await teeLogService.generateAttestation(JSON.stringify(pageQuery));
+                const pageQuery = await teeLogService.getLogs(
+                    teeLogQuery,
+                    page,
+                    pageSize
+                );
+                const attestation = await teeLogService.generateAttestation(
+                    JSON.stringify(pageQuery)
+                );
                 res.json({
                     logs: pageQuery,
                     attestation: attestation,
@@ -356,4 +363,3 @@ export function createApiRouter(
 
     return router;
 }
-
