@@ -1111,7 +1111,7 @@ const startAgents = async () => {
         const db = initializeDatabase("") as PostgresDatabaseAdapter;
         await db.init();
         const agents = await db.query(
-            `SELECT id, title, schema FROM "public"."Agent" WHERE status = 'ACTIVE';`
+            `SELECT id, name, schema FROM "public"."Agent" WHERE status = 'ACTIVE';`
         );
         characters = agents.rows.map((agent) => JSON.parse(agent.schema));
     }
