@@ -4,7 +4,6 @@ import {
     IAgentRuntime,
     ModelClass,
 } from "@elizaos/core";
-import { APOLLO_TRADING_ROOM_ID } from "./constants";
 
 export const generateAnalysis = async (
     runtime: IAgentRuntime,
@@ -64,7 +63,7 @@ export const createMemory = async (runtime: IAgentRuntime, message: string) => {
         id: crypto.randomUUID(),
         userId: runtime.agentId,
         agentId: runtime.agentId,
-        roomId: APOLLO_TRADING_ROOM_ID,
+        roomId: undefined,
         content: {
             text: message,
         },

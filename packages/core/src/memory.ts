@@ -180,7 +180,11 @@ export class MemoryManager implements IMemoryManager {
             return;
         }
 
-        elizaLogger.log("Creating Memory", memory.id, memory.content.text);
+        elizaLogger.log(
+            `${this.runtime.character.name} Creating Memory`,
+            memory.id,
+            memory.content.text
+        );
 
         await this.runtime.databaseAdapter.createMemory(
             memory,
@@ -189,12 +193,15 @@ export class MemoryManager implements IMemoryManager {
         );
     }
 
-    async getMemoriesByRoomIds(params: { roomIds: UUID[], limit?: number; }): Promise<Memory[]> {
+    async getMemoriesByRoomIds(params: {
+        roomIds: UUID[];
+        limit?: number;
+    }): Promise<Memory[]> {
         return await this.runtime.databaseAdapter.getMemoriesByRoomIds({
             tableName: this.tableName,
             agentId: this.runtime.agentId,
             roomIds: params.roomIds,
-            limit: params.limit
+            limit: params.limit,
         });
     }
 
