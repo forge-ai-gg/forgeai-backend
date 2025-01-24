@@ -1,4 +1,5 @@
 import { Client, IAgentRuntime, elizaLogger } from "@elizaos/core";
+import { logRandomThoughts } from "./apollo/random-thoughts";
 
 export class AutoClient {
     interval: NodeJS.Timeout;
@@ -7,15 +8,26 @@ export class AutoClient {
     constructor(runtime: IAgentRuntime) {
         this.runtime = runtime;
 
-        // start a loop that runs every x seconds
-        this.interval = setInterval(
-            async () => {
-                elizaLogger.log(
-                    `character ${this.runtime.character.name} starting auto client...`
-                );
-            },
-            60 * 60 * 1000
-        ); // 1 hour in milliseconds
+        elizaLogger.log(
+            `character ${this.runtime.character.name.toUpperCase()} starting auto client...`
+        );
+
+        // Random stagger between 1-3 minutes
+        const staggerMs =
+            Math.floor(Math.random() * (3 - 1 + 1) + 1) * 60 * 1000;
+
+        setTimeout(() => {
+            // Run first run
+            void logRandomThoughts(this.runtime);
+
+            // start a loop that runs every hour
+            this.interval = setInterval(
+                async () => {
+                    await logRandomThoughts(this.runtime);
+                },
+                60 * 60 * 1000 // 1 hour in milliseconds
+            );
+        }, staggerMs);
     }
 }
 
