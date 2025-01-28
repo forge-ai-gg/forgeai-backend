@@ -6,13 +6,13 @@
 
 <div align="center">
 
-📖 [Documentation](https://elizaos.github.io/eliza/) | 🎯 [Examples](https://github.com/thejoven/awesome-eliza)
+📑 [Technical Report](https://arxiv.org/pdf/2501.06781) |  📖 [Documentation](https://elizaos.github.io/eliza/) | 🎯 [Examples](https://github.com/thejoven/awesome-eliza)
 
 </div>
 
 ## 🌍 README Translations
 
-[中文说明](./README_CN.md) | [日本語の説明](./README_JA.md) | [한국어 설명](./README_KOR.md) | [Persian](./README_FA.md) | [Français](./README_FR.md) | [Português](./README_PTBR.md) | [Türkçe](./README_TR.md) | [Русский](./README_RU.md) | [Español](./README_ES.md) | [Italiano](./README_IT.md) | [ไทย](./README_TH.md) | [Deutsch](./README_DE.md) | [Tiếng Việt](./README_VI.md) | [עִברִית](https://github.com/elizaos/Elisa/blob/main/README_HE.md) | [Tagalog](./README_TG.md) | [Polski](./README_PL.md) | [Arabic](./README_AR.md) | [Hungarian](./README_HU.md) | [Srpski](./README_RS.md) | [Română](./README_RO.md) | [Nederlands](./README_NL.md) | [Ελληνικά](./README_GR.md)
+[中文说明](i18n/readme/README_CN.md) | [日本語の説明](i18n/readme/README_JA.md) | [한국어 설명](i18n/readme/README_KOR.md) | [Persian](i18n/readme/README_FA.md) | [Français](i18n/readme/README_FR.md) | [Português](i18n/readme/README_PTBR.md) | [Türkçe](i18n/readme/README_TR.md) | [Русский](i18n/readme/README_RU.md) | [Español](i18n/readme/README_ES.md) | [Italiano](i18n/readme/README_IT.md) | [ไทย](i18n/readme/README_TH.md) | [Deutsch](i18n/readme/README_DE.md) | [Tiếng Việt](i18n/readme/README_VI.md) | [עִברִית](i18n/readme/README_HE.md) | [Tagalog](i18n/readme/README_TG.md) | [Polski](i18n/readme/README_PL.md) | [Arabic](i18n/readme/README_AR.md) | [Hungarian](i18n/readme/README_HU.md) | [Srpski](i18n/readme/README_RS.md) | [Română](i18n/readme/README_RO.md) | [Nederlands](i18n/readme/README_NL.md) | [Ελληνικά](i18n/readme/README_GR.md)
 
 ## 🚩 Overview
 
@@ -85,7 +85,6 @@ cp .env.example .env
 
 Note: .env is optional. If you're planning to run multiple distinct agents, you can pass secrets through the character JSON
 
-
 #### Start Eliza
 
 ```bash
@@ -99,9 +98,9 @@ pnpm clean
 
 ### Interact via Browser
 
-```
 Once the agent is running, you should see the message to run "pnpm start:client" at the end.
-Open another terminal and move to same directory and then run below command and follow the URL to chat to your agent.
+
+Open another terminal, move to the same directory, run the command below, then follow the URL to chat with your agent.
 
 ```bash
 pnpm start:client
@@ -109,7 +108,7 @@ pnpm start:client
 
 Then read the [Documentation](https://elizaos.github.io/eliza/) to learn how to customize your Eliza.
 
-----
+---
 
 ### Automatically Start Eliza
 
@@ -123,7 +122,7 @@ For detailed instructions on using the start script, including character managem
 
 > **Note**: The start script handles all dependencies, environment setup, and character management automatically.
 
-----
+---
 
 ### Modify Character
 
@@ -144,12 +143,23 @@ You may need to install Sharp. If you see an error when starting up, try install
 ```
 pnpm install --include=optional sharp
 ```
----
 
+---
 
 ### Start Eliza with Gitpod
 
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/elizaos/eliza/tree/main)
+
+---
+
+### Deploy Eliza in one click 
+
+Use [Fleek](https://fleek.xyz/eliza/) to deploy Eliza in one click. This opens Eliza to non-developers and provides the following options to build your agent:
+1. Start with a template
+2. Build characterfile from scratch
+3. Upload pre-made characterfile
+
+Click [here](https://fleek.xyz/eliza/) to get started!
 
 ---
 
@@ -158,11 +168,24 @@ pnpm install --include=optional sharp
 - [GitHub Issues](https://github.com/elizaos/eliza/issues). Best for: bugs you encounter using Eliza, and feature proposals.
 - [Discord](https://discord.gg/ai16z). Best for: sharing your applications and hanging out with the community.
 
+## Citation
+
+We now have a [paper](https://arxiv.org/pdf/2501.06781) you can cite for the Eliza OS:
+```bibtex
+@article{walters2025eliza,
+  title={Eliza: A Web3 friendly AI Agent Operating System},
+  author={Walters, Shaw and Gao, Sam and Nerd, Shakker and Da, Feng and Williams, Warren and Meng, Ting-Chien and Han, Hunter and He, Frank and Zhang, Allen and Wu, Ming and others},
+  journal={arXiv preprint arXiv:2501.06781},
+  year={2025}
+}
+```
+
 ## Contributors
 
 <a href="https://github.com/elizaos/eliza/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=elizaos/eliza" />
+  <img src="https://contrib.rocks/image?repo=elizaos/eliza" alt="Eliza project contributors" />
 </a>
+
 
 ## Star History
 
