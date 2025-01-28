@@ -26,7 +26,7 @@ interface UUIDParams {
 
 function validateUUIDParams(
     params: { agentId: string; roomId?: string },
-    res: express.Response
+    res: express.Response,
 ): UUIDParams | null {
     const agentId = validateUuid(params.agentId);
     if (!agentId) {
@@ -52,7 +52,7 @@ function validateUUIDParams(
 
 export function createApiRouter(
     agents: Map<string, AgentRuntime>,
-    directClient: DirectClient
+    directClient: DirectClient,
 ) {
     const router = express.Router();
 
@@ -62,7 +62,7 @@ export function createApiRouter(
     router.use(
         express.json({
             limit: getEnvVariable("EXPRESS_MAX_PAYLOAD") || "100kb",
-        })
+        }),
     );
 
     router.get("/", (req, res) => {
@@ -117,8 +117,6 @@ export function createApiRouter(
     });
 
     router.delete("/agents/:agentId", async (req, res) => {
-        console.log({ here: " here" });
-
         const { agentId } = validateUUIDParams(req.params, res) ?? {
             agentId: null,
         };
@@ -127,6 +125,7 @@ export function createApiRouter(
         const agent: AgentRuntime = agents.get(agentId);
 
         if (agent) {
+            elizaLogger.log(`STOP AGENT: ${agent.character.name} stopped`);
             agent.stop();
             directClient.unregisterAgent(agent);
             res.status(204).json({ success: true });
@@ -186,7 +185,7 @@ export function createApiRouter(
                 const uploadDir = path.join(
                     process.cwd(),
                     "data",
-                    "characters"
+                    "characters",
                 );
                 const filepath = path.join(uploadDir, filename);
                 await fs.promises.mkdir(uploadDir, { recursive: true });
@@ -195,15 +194,15 @@ export function createApiRouter(
                     JSON.stringify(
                         { ...characterJson, id: agent.agentId },
                         null,
-                        2
-                    )
+                        2,
+                    ),
                 );
                 elizaLogger.info(
-                    `Character stored successfully at ${filepath}`
+                    `Character stored successfully at ${filepath}`,
                 );
             } catch (error) {
                 elizaLogger.error(
-                    `Failed to store character: ${error.message}`
+                    `Failed to store character: ${error.message}`,
                 );
             }
         }
@@ -226,20 +225,25 @@ export function createApiRouter(
 
         const agent: AgentRuntime = agents.get(agentId);
 
-        // update character
         if (agent) {
-            // stop agent
-            agent.stop();
-            directClient.unregisterAgent(agent);
-            // if it has a different name, the agentId will change
+            // agent already running
+            res.json({
+                id: agent.agentId,
+                character: agent.character,
+                message: "Agent already running",
+            });
+            return;
         }
 
-        const character = agent.character;
+        // load character from body
+        // todo - add security to make sure only we can do this
+        const character = req.body;
 
         // start it up (and register it)
         try {
+            validateCharacterConfig(character);
             await directClient.startAgent(character);
-            elizaLogger.log(`${character.name} started`);
+            elizaLogger.log(`START AGENT: ${character.name} started`);
         } catch (e) {
             elizaLogger.error(`Error starting agent: ${e}`);
             res.status(500).json({
@@ -251,6 +255,7 @@ export function createApiRouter(
         res.json({
             id: character.id,
             character: character,
+            success: true,
         });
     });
     /*
@@ -299,7 +304,7 @@ export function createApiRouter(
         // if runtime is null, look for runtime with the same name
         if (!runtime) {
             runtime = Array.from(agents.values()).find(
-                (a) => a.character.name.toLowerCase() === agentId.toLowerCase()
+                (a) => a.character.name.toLowerCase() === agentId.toLowerCase(),
             );
         }
 
@@ -335,7 +340,7 @@ export function createApiRouter(
                                 description: attachment.description,
                                 text: attachment.text,
                                 contentType: attachment.contentType,
-                            })
+                            }),
                         ),
                     },
                     embedding: memory.embedding,
@@ -370,7 +375,7 @@ export function createApiRouter(
                 .getService<TeeLogService>(ServiceType.TEE_LOG)
                 .getInstance();
             const attestation = await teeLogService.generateAttestation(
-                JSON.stringify(allAgents)
+                JSON.stringify(allAgents),
             );
             res.json({ agents: allAgents, attestation: attestation });
         } catch (error) {
@@ -396,7 +401,7 @@ export function createApiRouter(
 
             const teeAgent = await teeLogService.getAgent(agentId);
             const attestation = await teeLogService.generateAttestation(
-                JSON.stringify(teeAgent)
+                JSON.stringify(teeAgent),
             );
             res.json({ agent: teeAgent, attestation: attestation });
         } catch (error) {
@@ -431,10 +436,10 @@ export function createApiRouter(
                 const pageQuery = await teeLogService.getLogs(
                     teeLogQuery,
                     page,
-                    pageSize
+                    pageSize,
                 );
                 const attestation = await teeLogService.generateAttestation(
-                    JSON.stringify(pageQuery)
+                    JSON.stringify(pageQuery),
                 );
                 res.json({
                     logs: pageQuery,
@@ -446,7 +451,7 @@ export function createApiRouter(
                     error: "Failed to get TEE logs",
                 });
             }
-        }
+        },
     );
 
     router.post("/agent/start", async (req, res) => {
@@ -458,12 +463,11 @@ export function createApiRouter(
             if (characterJson) {
                 character = await directClient.jsonToCharacter(
                     characterPath,
-                    characterJson
+                    characterJson,
                 );
             } else if (characterPath) {
-                character = await directClient.loadCharacterTryPath(
-                    characterPath
-                );
+                character =
+                    await directClient.loadCharacterTryPath(characterPath);
             } else {
                 throw new Error("No character path or JSON provided");
             }
