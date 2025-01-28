@@ -104,6 +104,8 @@ export function createApiRouter(
     });
 
     router.delete("/agents/:agentId", async (req, res) => {
+        console.log({ here: " here" });
+
         const { agentId } = validateUUIDParams(req.params, res) ?? {
             agentId: null,
         };
@@ -166,6 +168,49 @@ export function createApiRouter(
             character: character,
         });
     });
+
+    /*
+     * BEGIN CUSTOM FORGE AI
+     * Start an agent
+     */
+    router.post("/agents/:agentId/start", async (req, res) => {
+        const { agentId } = validateUUIDParams(req.params, res) ?? {
+            agentId: null,
+        };
+        if (!agentId) return;
+
+        const agent: AgentRuntime = agents.get(agentId);
+
+        // update character
+        if (agent) {
+            // stop agent
+            agent.stop();
+            directClient.unregisterAgent(agent);
+            // if it has a different name, the agentId will change
+        }
+
+        const character = agent.character;
+
+        // start it up (and register it)
+        try {
+            await directClient.startAgent(character);
+            elizaLogger.log(`${character.name} started`);
+        } catch (e) {
+            elizaLogger.error(`Error starting agent: ${e}`);
+            res.status(500).json({
+                success: false,
+                message: e.message,
+            });
+            return;
+        }
+        res.json({
+            id: character.id,
+            character: character,
+        });
+    });
+    /*
+     * END CUSTOM FORGE AI
+     */
 
     router.get("/agents/:agentId/channels", async (req, res) => {
         const { agentId } = validateUUIDParams(req.params, res) ?? {

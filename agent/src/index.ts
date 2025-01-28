@@ -1114,6 +1114,7 @@ const startAgents = async () => {
             `SELECT id, name, schema FROM "public"."Agent" WHERE status = 'ACTIVE';`
         );
         characters = agents.rows.map((agent) => JSON.parse(agent.schema));
+        elizaLogger.log(`Loading ${characters.length} agents from DB`);
     }
     /* END CUSTOM FORGEAI CODE */
 
