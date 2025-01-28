@@ -1,7 +1,7 @@
 import type { IAgentRuntime, Memory, State, HandlerCallback } from "@elizaos/core";
 import { RemoteAttestationProvider } from "../providers/remoteAttestationProvider";
 import { fetch, type BodyInit } from "undici";
-import { RemoteAttestationMessage } from "../types/tee";
+import type { RemoteAttestationMessage } from "../types/tee";
 
 function hexToUint8Array(hex: string) {
     hex = hex.trim();
@@ -17,7 +17,7 @@ function hexToUint8Array(hex: string) {
 
     const array = new Uint8Array(hex.length / 2);
     for (let i = 0; i < hex.length; i += 2) {
-      const byte = parseInt(hex.slice(i, i + 2), 16);
+      const byte = Number.parseInt(hex.slice(i, i + 2), 16);
       if (isNaN(byte)) {
         throw new Error("Invalid hex string");
       }
@@ -87,13 +87,13 @@ https://proof.t16z.com/reports/${data.checksum}`,
                 user: "{{user1}}",
                 content: {
                     text: "If you are running in a TEE, generate a remote attestation",
+                    action: "REMOTE_ATTESTATION",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
                     text: "Of course, one second...",
-                    action: "REMOTE_ATTESTATION",
                 },
             }
         ],

@@ -1,14 +1,14 @@
 import {
-    ActionExample,
+    type ActionExample,
     composeContext,
-    Content,
+    type Content,
     elizaLogger,
     generateObject,
-    HandlerCallback,
-    IAgentRuntime,
-    Memory,
+    type HandlerCallback,
+    type IAgentRuntime,
+    type Memory,
     ModelClass,
-    State,
+    type State,
     type Action,
 } from "@elizaos/core";
 import axios from "axios";
@@ -52,6 +52,7 @@ export default {
         "CHECK_TOKEN_PRICE_BY_ADDRESS",
         "LOOKUP_TOKEN_BY_ADDRESS",
     ],
+    // eslint-disable-next-line
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         await validateCoingeckoConfig(runtime);
         return true;
@@ -98,7 +99,7 @@ export default {
 
             // Get API configuration
             const config = await validateCoingeckoConfig(runtime);
-            const { baseUrl, apiKey } = getApiConfig(config);
+            const { baseUrl, apiKey, headerKey } = getApiConfig(config);
 
             // Fetch token data
             elizaLogger.log("Fetching token data...");
@@ -107,7 +108,7 @@ export default {
                 {
                     headers: {
                         accept: "application/json",
-                        "x-cg-pro-api-key": apiKey,
+                        [headerKey]: apiKey,
                     },
                 }
             );
