@@ -1,9 +1,4 @@
-import bodyParser from "body-parser";
-import cors from "cors";
-import express from "express";
-import fs from "fs";
-import path from "path";
-
+import { AutoClientInterface } from "@elizaos/client-auto";
 import {
     type AgentRuntime,
     type Character,
@@ -12,11 +7,15 @@ import {
     ServiceType,
     type UUID,
     validateCharacterConfig,
+    validateUuid,
 } from "@elizaos/core";
-
-import { validateUuid } from "@elizaos/core";
 import type { TeeLogQuery, TeeLogService } from "@elizaos/plugin-tee-log";
+import bodyParser from "body-parser";
+import cors from "cors";
 import { REST, Routes } from "discord.js";
+import express from "express";
+import fs from "fs";
+import path from "path";
 import type { DirectClient } from ".";
 
 interface UUIDParams {
@@ -26,7 +25,7 @@ interface UUIDParams {
 
 function validateUUIDParams(
     params: { agentId: string; roomId?: string },
-    res: express.Response,
+    res: express.Response
 ): UUIDParams | null {
     const agentId = validateUuid(params.agentId);
     if (!agentId) {
@@ -52,7 +51,7 @@ function validateUUIDParams(
 
 export function createApiRouter(
     agents: Map<string, AgentRuntime>,
-    directClient: DirectClient,
+    directClient: DirectClient
 ) {
     const router = express.Router();
 
@@ -62,7 +61,7 @@ export function createApiRouter(
     router.use(
         express.json({
             limit: getEnvVariable("EXPRESS_MAX_PAYLOAD") || "100kb",
-        }),
+        })
     );
 
     router.get("/", (req, res) => {
@@ -185,7 +184,7 @@ export function createApiRouter(
                 const uploadDir = path.join(
                     process.cwd(),
                     "data",
-                    "characters",
+                    "characters"
                 );
                 const filepath = path.join(uploadDir, filename);
                 await fs.promises.mkdir(uploadDir, { recursive: true });
@@ -194,15 +193,15 @@ export function createApiRouter(
                     JSON.stringify(
                         { ...characterJson, id: agent.agentId },
                         null,
-                        2,
-                    ),
+                        2
+                    )
                 );
                 elizaLogger.info(
-                    `Character stored successfully at ${filepath}`,
+                    `Character stored successfully at ${filepath}`
                 );
             } catch (error) {
                 elizaLogger.error(
-                    `Failed to store character: ${error.message}`,
+                    `Failed to store character: ${error.message}`
                 );
             }
         }
@@ -243,6 +242,7 @@ export function createApiRouter(
         try {
             validateCharacterConfig(character);
             await directClient.startAgent(character);
+            await AutoClientInterface.start(agent);
             elizaLogger.log(`START AGENT: ${character.name} started`);
         } catch (e) {
             elizaLogger.error(`Error starting agent: ${e}`);
@@ -304,7 +304,7 @@ export function createApiRouter(
         // if runtime is null, look for runtime with the same name
         if (!runtime) {
             runtime = Array.from(agents.values()).find(
-                (a) => a.character.name.toLowerCase() === agentId.toLowerCase(),
+                (a) => a.character.name.toLowerCase() === agentId.toLowerCase()
             );
         }
 
@@ -340,7 +340,7 @@ export function createApiRouter(
                                 description: attachment.description,
                                 text: attachment.text,
                                 contentType: attachment.contentType,
-                            }),
+                            })
                         ),
                     },
                     embedding: memory.embedding,
@@ -375,7 +375,7 @@ export function createApiRouter(
                 .getService<TeeLogService>(ServiceType.TEE_LOG)
                 .getInstance();
             const attestation = await teeLogService.generateAttestation(
-                JSON.stringify(allAgents),
+                JSON.stringify(allAgents)
             );
             res.json({ agents: allAgents, attestation: attestation });
         } catch (error) {
@@ -401,7 +401,7 @@ export function createApiRouter(
 
             const teeAgent = await teeLogService.getAgent(agentId);
             const attestation = await teeLogService.generateAttestation(
-                JSON.stringify(teeAgent),
+                JSON.stringify(teeAgent)
             );
             res.json({ agent: teeAgent, attestation: attestation });
         } catch (error) {
@@ -436,10 +436,10 @@ export function createApiRouter(
                 const pageQuery = await teeLogService.getLogs(
                     teeLogQuery,
                     page,
-                    pageSize,
+                    pageSize
                 );
                 const attestation = await teeLogService.generateAttestation(
-                    JSON.stringify(pageQuery),
+                    JSON.stringify(pageQuery)
                 );
                 res.json({
                     logs: pageQuery,
@@ -451,7 +451,7 @@ export function createApiRouter(
                     error: "Failed to get TEE logs",
                 });
             }
-        },
+        }
     );
 
     router.post("/agent/start", async (req, res) => {
@@ -463,11 +463,12 @@ export function createApiRouter(
             if (characterJson) {
                 character = await directClient.jsonToCharacter(
                     characterPath,
-                    characterJson,
+                    characterJson
                 );
             } else if (characterPath) {
-                character =
-                    await directClient.loadCharacterTryPath(characterPath);
+                character = await directClient.loadCharacterTryPath(
+                    characterPath
+                );
             } else {
                 throw new Error("No character path or JSON provided");
             }

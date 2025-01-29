@@ -106,7 +106,6 @@ import { imageGenerationPlugin } from "@elizaos/plugin-image-generation";
 import { imgflipPlugin } from "@elizaos/plugin-imgflip";
 import { initiaPlugin } from "@elizaos/plugin-initia";
 import { injectivePlugin } from "@elizaos/plugin-injective";
-import { lensPlugin } from "@elizaos/plugin-lensNetwork";
 import { letzAIPlugin } from "@elizaos/plugin-letzai";
 import { litPlugin } from "@elizaos/plugin-lit";
 import { minaPlugin } from "@elizaos/plugin-mina";
@@ -791,7 +790,7 @@ export async function initializeClients(
 ) {
     // each client can only register once
     // and if we want two we can explicitly support it
-    const clients: Record<string, Client> = {}; // Initialize with proper type
+    const clients: Record<string, any> = {}; // Initialize with proper type
     const clientTypes: string[] =
         character.clients?.map((str) => str.toLowerCase()) || [];
     elizaLogger.log("initializeClients", clientTypes, "for", character.name);
@@ -1150,10 +1149,10 @@ export async function createAgent(
             getSecret(character, "FLOW_PRIVATE_KEY")
                 ? flowPlugin
                 : null,
-            getSecret(character, "LENS_ADDRESS") &&
-            getSecret(character, "LENS_PRIVATE_KEY")
-                ? lensPlugin
-                : null,
+            // getSecret(character, "LENS_ADDRESS") &&
+            // getSecret(character, "LENS_PRIVATE_KEY")
+            //     ? lensPlugin
+            //     : null,
             getSecret(character, "APTOS_PRIVATE_KEY") ? aptosPlugin : null,
             getSecret(character, "MIND_COLD_WALLET_ADDRESS")
                 ? mindNetworkPlugin

@@ -8,7 +8,9 @@ import { APOLLO_WALLET_ADDRESS } from "./constants";
 import { cleanResponseText, createMemory } from "./utils";
 
 export const logRandomThoughts = async (runtime: IAgentRuntime) => {
-    elizaLogger.log("Running logRandomThoughts client...");
+    elizaLogger.log(
+        `Agent ${runtime.character.name} (${runtime.agentId}) running logRandomThoughts client...`
+    );
 
     // generate a thought about what to do
     await createMemory(

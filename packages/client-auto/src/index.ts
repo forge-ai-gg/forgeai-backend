@@ -10,7 +10,7 @@ export class AutoClient {
         // this.runtime.clients["auto"] = this;
 
         elizaLogger.log(
-            `character ${this.runtime.character.name.toUpperCase()} starting auto client...`,
+            `Agent ${this.runtime.character.name} (${this.runtime.agentId}) starting auto client...`
         );
 
         // Random stagger between 1-3 minutes
@@ -26,7 +26,7 @@ export class AutoClient {
                 async () => {
                     await logRandomThoughts(this.runtime);
                 },
-                60 * 60 * 1000, // 1 hour in milliseconds
+                60 * 60 * 1000 // 1 hour in milliseconds
             );
         }, staggerMs);
     }
@@ -36,7 +36,7 @@ export class AutoClient {
             clearInterval(this.interval);
             this.interval = null;
             elizaLogger.log(
-                `character ${this.runtime.character.name.toUpperCase()} stopping auto client...`,
+                `character ${this.runtime.character.name.toUpperCase()} stopping auto client...`
             );
         }
     }
@@ -52,7 +52,7 @@ export const AutoClientInterface: Client = {
         // client?.stop();
         console.log(
             "stopping auto client",
-            JSON.stringify(runtime.clients, null, 2),
+            JSON.stringify(runtime.clients, null, 2)
         );
         console.warn("Auto client does not support stopping yet");
     },
