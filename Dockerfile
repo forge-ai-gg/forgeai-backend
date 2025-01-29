@@ -40,6 +40,10 @@ COPY . .
 # Install dependencies
 RUN pnpm install --no-frozen-lockfile
 
+# patch the package.json to allow non-applied patches
+# see https://github.com/elizaOS/eliza/issues/2946
+jq '.pnpm.allowNonAppliedPatches = true' package.json > tmp.json && mv tmp.json package.json
+
 # Build the project
 RUN pnpm run build && pnpm prune --prod
 

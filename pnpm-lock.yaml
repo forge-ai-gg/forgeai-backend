@@ -139,6 +139,9 @@ importers:
       '@elizaos/adapter-sqlite':
         specifier: workspace:*
         version: link:../packages/adapter-sqlite
+      '@elizaos/adapter-supabase':
+        specifier: workspace:*
+        version: link:../packages/adapter-supabase
       '@elizaos/client-alexa':
         specifier: workspace:*
         version: link:../packages/client-alexa
@@ -361,6 +364,9 @@ importers:
       '@elizaos/plugin-iq6900':
         specifier: workspace:*
         version: link:../packages/plugin-iq6900
+      '@elizaos/plugin-lens-network':
+        specifier: workspace:*
+        version: link:../packages/plugin-lens-network
       '@elizaos/plugin-letzai':
         specifier: workspace:*
         version: link:../packages/plugin-letzai
@@ -385,6 +391,12 @@ importers:
       '@elizaos/plugin-movement':
         specifier: workspace:*
         version: link:../packages/plugin-movement
+      '@elizaos/plugin-multiversx':
+        specifier: workspace:*
+        version: link:../packages/plugin-multiversx
+      '@elizaos/plugin-near':
+        specifier: workspace:*
+        version: link:../packages/plugin-near
       '@elizaos/plugin-news':
         specifier: workspace:*
         version: link:../packages/plugin-news
@@ -448,6 +460,9 @@ importers:
       '@elizaos/plugin-squid-router':
         specifier: workspace:*
         version: link:../packages/plugin-squid-router
+      '@elizaos/plugin-stargaze':
+        specifier: workspace:*
+        version: link:../packages/plugin-stargaze
       '@elizaos/plugin-starknet':
         specifier: workspace:*
         version: link:../packages/plugin-starknet
@@ -499,6 +514,9 @@ importers:
       '@elizaos/plugin-zilliqa':
         specifier: workspace:*
         version: link:../packages/plugin-zilliqa
+      '@elizaos/plugin-zksync-era':
+        specifier: workspace:*
+        version: link:../packages/plugin-zksync-era
       readline:
         specifier: 1.3.0
         version: 1.3.0
@@ -2349,6 +2367,9 @@ importers:
       '@cosmjs/stargate':
         specifier: ^0.32.4
         version: 0.32.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@elizaos/core':
+        specifier: workspace:*
+        version: link:../core
       '@skip-go/client':
         specifier: ^0.16.3
         version: 0.16.6(@types/react@19.0.8)(bufferutil@4.0.9)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(starknet@6.18.0(encoding@0.1.13))(utf-8-validate@5.0.10)(viem@2.21.58(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.23.8))
@@ -3156,10 +3177,10 @@ importers:
         version: link:../core
       '@irys/upload':
         specifier: ^0.0.14
-        version: 0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
+        version: 0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       '@irys/upload-ethereum':
         specifier: ^0.0.14
-        version: 0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
+        version: 0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       graphql-request:
         specifier: ^4.0.0
         version: 4.3.0(encoding@0.1.13)(graphql@16.10.0)
@@ -4047,8 +4068,8 @@ importers:
         specifier: 0.1.3
         version: 0.1.3(@goat-sdk/core@0.3.8(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.7.3)(utf-8-validate@5.0.10))(viem@2.21.58(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.23.8))
       '@solana/web3.js':
-        specifier: npm:@solana/web3.js@1.95.5
-        version: 1.95.5(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
+        specifier: npm:@solana/web3.js@1.95.8
+        version: 1.95.8(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       bignumber:
         specifier: 1.1.0
         version: 1.1.0
@@ -5306,6 +5327,7 @@ packages:
   '@aws-sdk/middleware-flexible-checksums@3.734.0':
     resolution: {integrity: sha512-q3AMNllvRrRjyFH9YjLuN7s4FmXCWBNAzdODDI3teNWmUzlGMmzvs8eGbqxKlmBYA5YKtLTVARw9KIWj8JdgoA==}
     engines: {node: '>=18.0.0'}
+    deprecated: Please upgrade to >=3.735.0, which contains fixes for checksum validation in S3 getObject calls. Details https://github.com/aws/aws-sdk-js-v3/issues/6827
 
   '@aws-sdk/middleware-host-header@3.734.0':
     resolution: {integrity: sha512-LW7RRgSOHHBzWZnigNsDIzu3AiwtjeI2X66v+Wn1P1u+eXssy1+up4ZY/h+t2sU4LU36UvEf+jrZti9c6vRnFw==}
@@ -35840,11 +35862,11 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  '@irys/bundles@0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)':
+  '@irys/bundles@0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethersproject/bytes': 5.7.0
       '@ethersproject/hash': 5.7.0
-      '@ethersproject/providers': 5.7.2(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+      '@ethersproject/providers': 5.7.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@ethersproject/signing-key': 5.7.0
       '@ethersproject/transactions': 5.7.0
       '@ethersproject/wallet': 5.7.0
@@ -35957,9 +35979,9 @@ snapshots:
       - encoding
       - utf-8-validate
 
-  '@irys/upload-core@0.0.9(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)':
+  '@irys/upload-core@0.0.9(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)':
     dependencies:
-      '@irys/bundles': 0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
+      '@irys/bundles': 0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       '@irys/query': 0.0.9
       '@supercharge/promise-pool': 3.2.0
       async-retry: 1.3.3
@@ -35973,15 +35995,15 @@ snapshots:
       - encoding
       - utf-8-validate
 
-  '@irys/upload-ethereum@0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)':
+  '@irys/upload-ethereum@0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethersproject/bignumber': 5.7.0
       '@ethersproject/contracts': 5.7.0
-      '@ethersproject/providers': 5.7.2(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+      '@ethersproject/providers': 5.7.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@ethersproject/wallet': 5.7.0
-      '@irys/bundles': 0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
-      '@irys/upload': 0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
-      '@irys/upload-core': 0.0.9(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
+      '@irys/bundles': 0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      '@irys/upload': 0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      '@irys/upload-core': 0.0.9(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       bignumber.js: 9.1.2
     transitivePeerDependencies:
       - arweave
@@ -35990,10 +36012,10 @@ snapshots:
       - encoding
       - utf-8-validate
 
-  '@irys/upload@0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)':
+  '@irys/upload@0.0.14(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)':
     dependencies:
-      '@irys/bundles': 0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
-      '@irys/upload-core': 0.0.9(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@6.0.5)
+      '@irys/bundles': 0.0.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      '@irys/upload-core': 0.0.9(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       async-retry: 1.3.3
       axios: 1.7.9
       base64url: 3.0.1
