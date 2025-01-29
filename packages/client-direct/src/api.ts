@@ -242,8 +242,13 @@ export function createApiRouter(
         try {
             validateCharacterConfig(character);
             await directClient.startAgent(character);
+
+            // get the agent and start the auto client
+            const agent = agents.get(character.id);
+            console.log("got agent", agent.agentId);
             await AutoClientInterface.start(agent);
-            elizaLogger.log(`START AGENT: ${character.name} started`);
+
+            elizaLogger.log(`START AGENT: ${agent.character.name} started`);
         } catch (e) {
             elizaLogger.error(`Error starting agent: ${e}`);
             res.status(500).json({
