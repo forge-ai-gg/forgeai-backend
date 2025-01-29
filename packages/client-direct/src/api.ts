@@ -1,4 +1,3 @@
-import { AutoClientInterface } from "@elizaos/client-auto";
 import {
     type AgentRuntime,
     type Character,
@@ -216,53 +215,68 @@ export function createApiRouter(
      * BEGIN CUSTOM FORGE AI
      * Start an agent
      */
-    router.post("/agents/:agentId/start", async (req, res) => {
-        const { agentId } = validateUUIDParams(req.params, res) ?? {
-            agentId: null,
-        };
-        if (!agentId) return;
+    // router.post("/agents/:agentId/start", async (req, res) => {
+    //     const { agentId } = validateUUIDParams(req.params, res) ?? {
+    //         agentId: null,
+    //     };
+    //     if (!agentId) return;
 
-        const agent: AgentRuntime = agents.get(agentId);
+    //     let agent: AgentRuntime = agents.get(agentId);
 
-        if (agent) {
-            // agent already running
-            res.json({
-                id: agent.agentId,
-                character: agent.character,
-                message: "Agent already running",
-            });
-            return;
-        }
+    //     if (agent) {
+    //         // agent already running
+    //         agent.stop();
+    //         directClient.unregisterAgent(agent);
+    //         // if it has a different name, the agentId will change
+    //     }
 
-        // load character from body
-        // todo - add security to make sure only we can do this
-        const character = req.body;
+    //     // stores the json data before it is modified with added data
+    //     const characterJson = { ...req.body };
 
-        // start it up (and register it)
-        try {
-            validateCharacterConfig(character);
-            await directClient.startAgent(character);
+    //     // load character from body
+    //     const character = req.body;
 
-            // get the agent and start the auto client
-            const agent = agents.get(character.id);
-            console.log("got agent", agent.agentId);
-            await AutoClientInterface.start(agent);
+    //     // start it up (and register it)
+    //     try {
+    //         validateCharacterConfig(character);
+    //     } catch (e) {
+    //         elizaLogger.error(`Error starting agent: ${e}`);
+    //         res.status(500).json({
+    //             success: false,
+    //             message: e.message,
+    //         });
+    //         return;
+    //     }
 
-            elizaLogger.log(`START AGENT: ${agent.character.name} started`);
-        } catch (e) {
-            elizaLogger.error(`Error starting agent: ${e}`);
-            res.status(500).json({
-                success: false,
-                message: e.message,
-            });
-            return;
-        }
-        res.json({
-            id: character.id,
-            character: character,
-            success: true,
-        });
-    });
+    //     // start it up (and register it)
+    //     try {
+    //         agent = await directClient.startAgent(character);
+    //         elizaLogger.log(`${character.name} started`);
+    //     } catch (e) {
+    //         elizaLogger.error(`Error starting agent: ${e}`);
+    //         res.status(500).json({
+    //             success: false,
+    //             message: e.message,
+    //         });
+    //         return;
+    //     }
+    //     // await directClient.startAgent(character);
+
+    //     // // get the agent and start the auto client
+    //     // const agent = agents.get(character.id);
+    //     // elizaLogger.info("GOT AGENT", agent.agentId);
+
+    //     // const autoClient = await AutoClientInterface.start(agent);
+    //     // if (autoClient) agent.clients["auto"] = autoClient;
+
+    //     elizaLogger.info(`START AGENT: ${agent.character.name} started`);
+
+    //     res.json({
+    //         id: character.id,
+    //         character: character,
+    //         success: true,
+    //     });
+    // });
     /*
      * END CUSTOM FORGE AI
      */
