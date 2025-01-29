@@ -60,6 +60,9 @@
             "cookie": "0.7.0",
             "bs58": "5.0.0",
             "@coral-xyz/anchor": "0.28.0"
+        },
+        "patchedDependencies": {
+            "@solana-developers/helpers": "patches/@solana-developers__helpers.patch"
         }
     },
     "engines": {
@@ -70,7 +73,6 @@
         "@coinbase/coinbase-sdk": "0.10.0",
         "@deepgram/sdk": "^3.9.0",
         "@injectivelabs/sdk-ts": "^1.14.33",
-        "@solana-developers/helpers": "2.6.0",
         "@vitest/eslint-plugin": "1.0.1",
         "amqplib": "0.10.5",
         "bs58": "4.0.0",
