@@ -519,10 +519,12 @@ export function getTokenForProvider(
     character: Character
 ): string | undefined {
     switch (provider) {
-        // no key needed for llama_local or gaianet
+        // no key needed for llama_local, ollama, lmstudio, gaianet or bedrock
         case ModelProviderName.LLAMALOCAL:
             return "";
         case ModelProviderName.OLLAMA:
+            return "";
+        case ModelProviderName.LMSTUDIO:
             return "";
         case ModelProviderName.GAIANET:
             return "";
@@ -789,7 +791,7 @@ export async function initializeClients(
 ) {
     // each client can only register once
     // and if we want two we can explicitly support it
-    const clients: Record<string, Client> = {};  // Initialize with proper type
+    const clients: Record<string, Client> = {}; // Initialize with proper type
     const clientTypes: string[] =
         character.clients?.map((str) => str.toLowerCase()) || [];
     elizaLogger.log("initializeClients", clientTypes, "for", character.name);
@@ -1389,7 +1391,7 @@ async function startAgent(
         }
 
         db = initializeDatabase(dataDir) as IDatabaseAdapter &
-                IDatabaseCacheAdapter;
+            IDatabaseCacheAdapter;
 
         await db.init();
 
@@ -1492,10 +1494,10 @@ const startAgents = async () => {
     characters = await Promise.all(characters.map(normalizeCharacter));
 
     try {
-    for (const character of characters) {
-                await startAgent(character, directClient);
-            }
-        } catch (error) {
+        for (const character of characters) {
+            await startAgent(character, directClient);
+        }
+    } catch (error) {
         elizaLogger.error("Error starting agents:", error);
     }
 
