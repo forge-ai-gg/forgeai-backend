@@ -12,19 +12,18 @@ export const logRandomThoughts = async (runtime: IAgentRuntime) => {
         `Agent ${runtime.character.name} (${runtime.agentId}) running logRandomThoughts client...`
     );
 
-    // generate a thought about what to do
-    await createMemory(
+    const randomThought = await generateRandomThought(
         runtime,
-        await generateRandomThought(
-            runtime,
-            ACTIONS_PROMPTS[Math.floor(Math.random() * ACTIONS_PROMPTS.length)],
-            {
-                walletAddress: APOLLO_WALLET_ADDRESS,
-            }
-        )
+        ACTIONS_PROMPTS[Math.floor(Math.random() * ACTIONS_PROMPTS.length)],
+        {
+            walletAddress: APOLLO_WALLET_ADDRESS,
+        }
     );
 
-    elizaLogger.log("logRandomThoughts: finished running");
+    // generate a thought about what to do
+    await createMemory(runtime, randomThought);
+
+    elizaLogger.log(`logRandomThoughts: ${randomThought}`);
 };
 
 export const generateRandomThought = async (
