@@ -153,6 +153,7 @@ import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
+import { decrypt } from "./lib/aws-kms";
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -724,12 +725,21 @@ function initializeDatabase(dataDir: string) {
         return db;
     } else if (process.env.POSTGRES_URL) {
         elizaLogger.info("Initializing PostgreSQL connection...");
+        elizaLogger.debug(
+            "PostgreSQL URL:",
+            process.env.POSTGRES_URL.replace(/:[^:@]*@/, ":***@")
+        ); // Hide password
+
         const db = new PostgresDatabaseAdapter({
             connectionString: process.env.POSTGRES_URL,
             parseInputs: true,
         });
 
-        // Test the connection
+        // Add more detailed logging for connection steps
+        elizaLogger.info(
+            "Created PostgreSQL adapter, attempting to initialize..."
+        );
+
         db.init()
             .then(() => {
                 elizaLogger.success(
@@ -737,7 +747,13 @@ function initializeDatabase(dataDir: string) {
                 );
             })
             .catch((error) => {
-                elizaLogger.error("Failed to connect to PostgreSQL:", error);
+                elizaLogger.error("Failed to connect to PostgreSQL:", {
+                    message: error.message,
+                    code: error.code,
+                    detail: error.detail,
+                });
+                // Re-throw to handle in the calling code
+                throw error;
             });
 
         return db;
@@ -797,6 +813,7 @@ export async function initializeClients(
 
     // Start Auto Client if "auto" detected as a configured client
     if (clientTypes.includes(Clients.AUTO)) {
+        elizaLogger.info("Starting Auto Client");
         const autoClient = await AutoClientInterface.start(runtime);
         if (autoClient) clients.auto = autoClient;
     }
@@ -1458,8 +1475,15 @@ const hasValidRemoteUrls = () =>
     process.env.REMOTE_CHARACTER_URLS.startsWith("http");
 
 const startAgents = async () => {
+    elizaLogger.info("Starting agents...");
     const directClient = new DirectClient();
     let serverPort = Number.parseInt(settings.SERVER_PORT || "3000");
+
+    elizaLogger.debug("Settings:", {
+        LOAD_AGENTS_FROM_DB: settings.LOAD_AGENTS_FROM_DB,
+        POSTGRES_URL: settings.POSTGRES_URL ? "Set" : "Not set",
+    });
+
     const args = parseArguments();
     const charactersArg = args.characters || args.character;
     let characters = [defaultCharacter];
@@ -1476,18 +1500,39 @@ const startAgents = async () => {
 
     /*
      * START CUSTOM FORGEAI CODE
-     * This code will query our agents table for all agents and load them into the agent runtime
      */
     if (settings.LOAD_AGENTS_FROM_DB && settings.POSTGRES_URL) {
+        elizaLogger.info("Attempting to load agents from database...");
         const db = initializeDatabase("") as PostgresDatabaseAdapter;
-        await db.init();
-        const agents = await db.query(
-            `SELECT id, name, schema FROM "public"."Agent" WHERE status = 'active';`
-        );
-        characters = agents.rows.map((agent) => JSON.parse(agent.schema));
-        elizaLogger.log(`Loading ${characters.length} agents from DB`);
+        elizaLogger.info("Database adapter created, initializing...");
+
+        try {
+            await db.init();
+            elizaLogger.info("Database initialized, querying agents...");
+
+            const agents = await db.query(
+                `SELECT id, name, schema FROM "public"."Agent" WHERE status = 'active';`
+            );
+            elizaLogger.info(`Found ${agents.rows.length} active agents`);
+            characters = await Promise.all(
+                agents.rows.map(async (agent) => {
+                    const decryptedSchema = await decrypt(agent.schema);
+                    return JSON.parse(decryptedSchema);
+                })
+            );
+            elizaLogger.info(`Loaded ${characters.length} characters`);
+            elizaLogger.info("Characters:", characters);
+        } catch (error) {
+            elizaLogger.error("Error loading agents from database:", {
+                message: error.message,
+                stack: error.stack,
+            });
+            throw error;
+        }
     }
-    /* END CUSTOM FORGEAI CODE */
+    /*
+     * END CUSTOM FORGEAI CODE
+     */
 
     // Normalize characters for injectable plugins
     characters = await Promise.all(characters.map(normalizeCharacter));

@@ -1,5 +1,4 @@
 import { type Client, type IAgentRuntime, elizaLogger } from "@elizaos/core";
-import { logInitialThought } from "./forge/initial-thought";
 import { logRandomThoughts } from "./forge/random-thoughts";
 
 // todo - add a config for this
@@ -17,17 +16,17 @@ export class AutoClient {
             `AGENT: ${this.runtime.character.name} (${this.runtime.agentId}) starting auto client...`
         );
 
-        // Run first run
-        void logInitialThought(this.runtime);
-
-        // stagger the interval start time randomly within 0-60 minutes
-        const staggerMs = Math.floor(Math.random() * (60 + 1)) * 60 * 1000;
+        // Random stagger between 1-60 seconds
+        const staggerMs = Math.floor(Math.random() * 60 * 1000);
 
         setTimeout(() => {
             // start a loop that runs every hour
-            this.interval = setInterval(async () => {
-                await logRandomThoughts(this.runtime);
-            }, AGENT_AUTO_CLIENT_INTERVAL);
+            this.interval = setInterval(
+                async () => {
+                    await logRandomThoughts(this.runtime);
+                },
+                60 * 1000 // 1 minute in milliseconds
+            );
         }, staggerMs);
     }
 
@@ -46,6 +45,7 @@ export const AutoClientInterface: Client = {
     start: async (runtime: IAgentRuntime) => {
         elizaLogger.info("STARTING AUTO CLIENT", runtime.agentId);
         const client = new AutoClient(runtime);
+        elizaLogger.info("Auto Client started");
         return client;
     },
     stop: async (runtime: IAgentRuntime) => {

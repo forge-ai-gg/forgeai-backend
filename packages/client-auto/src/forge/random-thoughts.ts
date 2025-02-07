@@ -8,9 +8,7 @@ import { APOLLO_WALLET_ADDRESS } from "./constants";
 import { cleanResponseText, createMemory } from "./utils";
 
 export const logRandomThoughts = async (runtime: IAgentRuntime) => {
-    elizaLogger.log(
-        `Agent ${runtime.character.name} (${runtime.agentId}) running logRandomThoughts client...`
-    );
+    elizaLogger.log("Running logRandomThoughts client...");
 
     const randomThought = await generateRandomThought(
         runtime,
@@ -20,17 +18,22 @@ export const logRandomThoughts = async (runtime: IAgentRuntime) => {
         }
     );
 
-    // generate a thought about what to do
-    await createMemory(runtime, randomThought);
+    elizaLogger.info("randomThought:", {
+        text: randomThought.text,
+        tokenUsage: randomThought.tokenUsage,
+    });
 
-    elizaLogger.log(`logRandomThoughts: ${randomThought}`);
+    // generate a thought about what to do
+    await createMemory(runtime, randomThought.text);
+
+    elizaLogger.log("logRandomThoughts: finished running");
 };
 
 export const generateRandomThought = async (
     runtime: IAgentRuntime,
     action: string,
     details?: any
-): Promise<string> => {
+): Promise<{ text: string; tokenUsage: { input: number; output: number } }> => {
     const prompt =
         RANDOM_THOUGHT_PROMPT_VARIATIONS[
             Math.floor(Math.random() * RANDOM_THOUGHT_PROMPT_VARIATIONS.length)
@@ -55,12 +58,18 @@ Respond with a single line of JSON in this exact format:
             modelClass: ModelClass.SMALL,
         });
 
-        return cleanResponseText(
-            response?.text || "Lost in thought at the moment"
-        );
+        return {
+            text: cleanResponseText(
+                response?.text || "Lost in thought at the moment"
+            ),
+            tokenUsage: response?.tokenUsage,
+        };
     } catch (error) {
         elizaLogger.error("Error generating thought:", error);
-        return "Lost in thought at the moment";
+        return {
+            text: "Lost in thought at the moment",
+            tokenUsage: undefined,
+        };
     }
 };
 
