@@ -12,9 +12,8 @@ export class AutoClient {
             `character ${this.runtime.character.name.toUpperCase()} starting auto client...`
         );
 
-        // Random stagger between 1-3 minutes
-        const staggerMs =
-            Math.floor(Math.random() * (3 - 1 + 1) + 1) * 60 * 1000;
+        // Random stagger between 1-60 seconds
+        const staggerMs = Math.floor(Math.random() * 60 * 1000);
 
         setTimeout(() => {
             // Run first run
@@ -25,7 +24,7 @@ export class AutoClient {
                 async () => {
                     await logRandomThoughts(this.runtime);
                 },
-                60 * 60 * 1000 // 1 hour in milliseconds
+                60 * 1000 // 1 minute in milliseconds
             );
         }, staggerMs);
     }
@@ -34,6 +33,7 @@ export class AutoClient {
 export const AutoClientInterface: Client = {
     start: async (runtime: IAgentRuntime) => {
         const client = new AutoClient(runtime);
+        elizaLogger.info("Auto Client started");
         return client;
     },
     stop: async (_runtime: IAgentRuntime) => {

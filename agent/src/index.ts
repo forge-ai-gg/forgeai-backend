@@ -812,6 +812,7 @@ export async function initializeClients(
 
     // Start Auto Client if "auto" detected as a configured client
     if (clientTypes.includes(Clients.AUTO)) {
+        elizaLogger.info("Starting Auto Client");
         const autoClient = await AutoClientInterface.start(runtime);
         if (autoClient) clients.auto = autoClient;
     }
@@ -1521,7 +1522,8 @@ const startAgents = async () => {
                     return JSON.parse(decryptedSchema);
                 })
             );
-            console.log(`Loaded ${characters.length} characters`);
+            elizaLogger.info(`Loaded ${characters.length} characters`);
+            elizaLogger.info("Characters:", characters);
         } catch (error) {
             elizaLogger.error("Error loading agents from database:", {
                 message: error.message,

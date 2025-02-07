@@ -10,17 +10,21 @@ import { cleanResponseText, createMemory } from "./utils";
 export const logRandomThoughts = async (runtime: IAgentRuntime) => {
     elizaLogger.log("Running logRandomThoughts client...");
 
-    // generate a thought about what to do
-    await createMemory(
+    const randomThought = await generateRandomThought(
         runtime,
-        await generateRandomThought(
-            runtime,
-            ACTIONS_PROMPTS[Math.floor(Math.random() * ACTIONS_PROMPTS.length)],
-            {
-                walletAddress: APOLLO_WALLET_ADDRESS,
-            }
-        )
+        ACTIONS_PROMPTS[Math.floor(Math.random() * ACTIONS_PROMPTS.length)],
+        {
+            walletAddress: APOLLO_WALLET_ADDRESS,
+        }
     );
+
+    elizaLogger.info("randomThought:", {
+        text: randomThought.text,
+        tokenUsage: randomThought.tokenUsage,
+    });
+
+    // generate a thought about what to do
+    await createMemory(runtime, randomThought.text);
 
     elizaLogger.log("logRandomThoughts: finished running");
 };
@@ -29,7 +33,7 @@ export const generateRandomThought = async (
     runtime: IAgentRuntime,
     action: string,
     details?: any
-): Promise<string> => {
+): Promise<{ text: string; tokenUsage: { input: number; output: number } }> => {
     const prompt =
         RANDOM_THOUGHT_PROMPT_VARIATIONS[
             Math.floor(Math.random() * RANDOM_THOUGHT_PROMPT_VARIATIONS.length)
@@ -54,12 +58,18 @@ Respond with a single line of JSON in this exact format:
             modelClass: ModelClass.SMALL,
         });
 
-        return cleanResponseText(
-            response?.text || "Lost in thought at the moment"
-        );
+        return {
+            text: cleanResponseText(
+                response?.text || "Lost in thought at the moment"
+            ),
+            tokenUsage: response?.tokenUsage,
+        };
     } catch (error) {
         elizaLogger.error("Error generating thought:", error);
-        return "Lost in thought at the moment";
+        return {
+            text: "Lost in thought at the moment",
+            tokenUsage: undefined,
+        };
     }
 };
 

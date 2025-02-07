@@ -1,56 +1,56 @@
+import { bedrock } from "@ai-sdk/amazon-bedrock";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createMistral } from "@ai-sdk/mistral";
 import { createGroq } from "@ai-sdk/groq";
+import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
-import { bedrock } from "@ai-sdk/amazon-bedrock";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { fal } from "@fal-ai/client";
+import { AutoTokenizer } from "@huggingface/transformers";
 import {
     generateObject as aiGenerateObject,
     generateText as aiGenerateText,
+    type StepResult as AIStepResult,
     type CoreTool,
     type GenerateObjectResult,
-    type StepResult as AIStepResult,
 } from "ai";
 import { Buffer } from "buffer";
+import { encodingForModel, type TiktokenModel } from "js-tiktoken";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { createOllama } from "ollama-ai-provider";
 import OpenAI from "openai";
-import { encodingForModel, type TiktokenModel } from "js-tiktoken";
-import { AutoTokenizer } from "@huggingface/transformers";
 import Together from "together-ai";
 import type { ZodSchema } from "zod";
 import { elizaLogger } from "./index.ts";
 import {
-    models,
-    getModelSettings,
-    getImageModelSettings,
     getEndpoint,
+    getImageModelSettings,
+    getModelSettings,
+    models,
 } from "./models.ts";
 import {
+    parseActionResponseFromText,
     parseBooleanFromText,
     parseJsonArrayFromText,
     parseJSONObjectFromText,
     parseShouldRespondFromText,
-    parseActionResponseFromText,
 } from "./parsing.ts";
 import settings from "./settings.ts";
 import {
+    type ActionResponse,
     type Content,
     type IAgentRuntime,
     type IImageDescriptionService,
     type ITextGenerationService,
+    type IVerifiableInferenceAdapter,
     ModelClass,
     ModelProviderName,
     ServiceType,
-    type ActionResponse,
-    type IVerifiableInferenceAdapter,
-    type VerifiableInferenceOptions,
-    type VerifiableInferenceResult,
     //VerifiableInferenceProvider,
     type TelemetrySettings,
     TokenizerType,
+    type VerifiableInferenceOptions,
+    type VerifiableInferenceResult,
 } from "./types.ts";
-import { fal } from "@fal-ai/client";
 
 import BigNumber from "bignumber.js";
 import { createPublicClient, http } from "viem";
@@ -1582,7 +1582,7 @@ export async function generateMessageResponse({
     runtime: IAgentRuntime;
     context: string;
     modelClass: ModelClass;
-}): Promise<Content> {
+}): Promise<Content & { tokenUsage?: { input: number; output: number } }> {
     const modelSettings = getModelSettings(runtime.modelProvider, modelClass);
     const max_context_length = modelSettings.maxInputTokens;
 
@@ -1606,7 +1606,28 @@ export async function generateMessageResponse({
                 continue;
             }
 
-            return parsedContent;
+            // Calculate token usage if possible
+            let tokenUsage;
+            try {
+                const tokenizerModel =
+                    runtime.getSetting("TOKENIZER_MODEL") || "gpt-4o";
+                const encoding = encodingForModel(
+                    tokenizerModel as TiktokenModel
+                );
+                const inputTokens = encoding.encode(context).length;
+                const outputTokens = encoding.encode(response).length;
+                tokenUsage = {
+                    input: inputTokens,
+                    output: outputTokens,
+                };
+            } catch (error) {
+                elizaLogger.debug("Failed to calculate token usage:", error);
+            }
+
+            return {
+                ...parsedContent,
+                tokenUsage,
+            };
         } catch (error) {
             elizaLogger.error("ERROR:", error);
             // wait for 2 seconds
