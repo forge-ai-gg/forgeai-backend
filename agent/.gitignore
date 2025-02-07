@@ -6,3 +6,5 @@
 .env*
 /data
 /generatedImages
+
+!lib/aws-kms.ts
