@@ -1,6 +1,7 @@
 *.ts
 !index.ts
 !character.ts
+!src/lib/aws-kms.ts
 .env
 *.env
 .env*
