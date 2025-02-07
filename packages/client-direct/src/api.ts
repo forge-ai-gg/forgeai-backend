@@ -1,9 +1,3 @@
-import bodyParser from "body-parser";
-import cors from "cors";
-import express from "express";
-import fs from "fs";
-import path from "path";
-
 import {
     type AgentRuntime,
     type Character,
@@ -12,11 +6,15 @@ import {
     ServiceType,
     type UUID,
     validateCharacterConfig,
+    validateUuid,
 } from "@elizaos/core";
-
-import { validateUuid } from "@elizaos/core";
 import type { TeeLogQuery, TeeLogService } from "@elizaos/plugin-tee-log";
+import bodyParser from "body-parser";
+import cors from "cors";
 import { REST, Routes } from "discord.js";
+import express from "express";
+import fs from "fs";
+import path from "path";
 import type { DirectClient } from ".";
 
 interface UUIDParams {
@@ -125,6 +123,7 @@ export function createApiRouter(
         const agent: AgentRuntime = agents.get(agentId);
 
         if (agent) {
+            elizaLogger.log(`STOP AGENT: ${agent.character.name} stopped`);
             agent.stop();
             directClient.unregisterAgent(agent);
             res.status(204).json({ success: true });
@@ -211,6 +210,76 @@ export function createApiRouter(
             character: character,
         });
     });
+
+    /*
+     * BEGIN CUSTOM FORGE AI
+     * Start an agent
+     */
+    // router.post("/agents/:agentId/start", async (req, res) => {
+    //     const { agentId } = validateUUIDParams(req.params, res) ?? {
+    //         agentId: null,
+    //     };
+    //     if (!agentId) return;
+
+    //     let agent: AgentRuntime = agents.get(agentId);
+
+    //     if (agent) {
+    //         // agent already running
+    //         agent.stop();
+    //         directClient.unregisterAgent(agent);
+    //         // if it has a different name, the agentId will change
+    //     }
+
+    //     // stores the json data before it is modified with added data
+    //     const characterJson = { ...req.body };
+
+    //     // load character from body
+    //     const character = req.body;
+
+    //     // start it up (and register it)
+    //     try {
+    //         validateCharacterConfig(character);
+    //     } catch (e) {
+    //         elizaLogger.error(`Error starting agent: ${e}`);
+    //         res.status(500).json({
+    //             success: false,
+    //             message: e.message,
+    //         });
+    //         return;
+    //     }
+
+    //     // start it up (and register it)
+    //     try {
+    //         agent = await directClient.startAgent(character);
+    //         elizaLogger.log(`${character.name} started`);
+    //     } catch (e) {
+    //         elizaLogger.error(`Error starting agent: ${e}`);
+    //         res.status(500).json({
+    //             success: false,
+    //             message: e.message,
+    //         });
+    //         return;
+    //     }
+    //     // await directClient.startAgent(character);
+
+    //     // // get the agent and start the auto client
+    //     // const agent = agents.get(character.id);
+    //     // elizaLogger.info("GOT AGENT", agent.agentId);
+
+    //     // const autoClient = await AutoClientInterface.start(agent);
+    //     // if (autoClient) agent.clients["auto"] = autoClient;
+
+    //     elizaLogger.info(`START AGENT: ${agent.character.name} started`);
+
+    //     res.json({
+    //         id: character.id,
+    //         character: character,
+    //         success: true,
+    //     });
+    // });
+    /*
+     * END CUSTOM FORGE AI
+     */
 
     router.get("/agents/:agentId/channels", async (req, res) => {
         const { agentId } = validateUUIDParams(req.params, res) ?? {
