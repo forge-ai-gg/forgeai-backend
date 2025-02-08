@@ -1,5 +1,5 @@
 import { type Client, type IAgentRuntime, elizaLogger } from "@elizaos/core";
-import { logRandomThoughts } from "./forge/random-thoughts";
+import { update } from "./update";
 
 // todo - add a config for this
 const AGENT_AUTO_CLIENT_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
@@ -13,17 +13,20 @@ export class AutoClient {
         // this.runtime.clients["auto"] = this;
 
         elizaLogger.info(
-            `AGENT: ${this.runtime.character.name} (${this.runtime.agentId}) starting auto client...`
+            `AGENT: ${this.runtime.character.name} (${this.runtime.agentId}) starting auto client.....`
         );
 
         // Random stagger between 1-60 seconds
-        const staggerMs = Math.floor(Math.random() * 60 * 1000);
+        // const staggerMs = Math.floor(Math.random() * 60 * 1000);
+        const staggerMs = 0;
+
+        update(this.runtime);
 
         setTimeout(() => {
             // start a loop that runs every hour
             this.interval = setInterval(
                 async () => {
-                    await logRandomThoughts(this.runtime);
+                    await update(this.runtime);
                 },
                 60 * 1000 // 1 minute in milliseconds
             );

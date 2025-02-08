@@ -1,24 +1,15 @@
-import { MongoDBDatabaseAdapter } from "@elizaos/adapter-mongodb";
-import { PGLiteDatabaseAdapter } from "@elizaos/adapter-pglite";
 import { PostgresDatabaseAdapter } from "@elizaos/adapter-postgres";
-import { QdrantDatabaseAdapter } from "@elizaos/adapter-qdrant";
 import { RedisClient } from "@elizaos/adapter-redis";
-import { SqliteDatabaseAdapter } from "@elizaos/adapter-sqlite";
-import { SupabaseDatabaseAdapter } from "@elizaos/adapter-supabase";
-import { AlexaClientInterface } from "@elizaos/client-alexa";
 import { AutoClientInterface } from "@elizaos/client-auto";
-import { DevaClientInterface } from "@elizaos/client-deva";
 import { DirectClient } from "@elizaos/client-direct";
 import { DiscordClientInterface } from "@elizaos/client-discord";
 import { FarcasterClientInterface } from "@elizaos/client-farcaster";
 import { InstagramClientInterface } from "@elizaos/client-instagram";
 import { LensAgentClient } from "@elizaos/client-lens";
-import { JeeterClientInterface } from "@elizaos/client-simsai";
 import { SlackClientInterface } from "@elizaos/client-slack";
 import { TelegramClientInterface } from "@elizaos/client-telegram";
 import { TelegramAccountClientInterface } from "@elizaos/client-telegram-account";
 import { TwitterClientInterface } from "@elizaos/client-twitter";
-import { XmtpClientInterface } from "@elizaos/client-xmtp";
 import {
     AgentRuntime,
     CacheManager,
@@ -41,29 +32,15 @@ import {
     validateCharacterConfig,
 } from "@elizaos/core";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
-import { normalizeCharacter } from "@elizaos/plugin-di";
-import createGoatPlugin from "@elizaos/plugin-goat";
-import { onchainJson } from "@elizaos/plugin-iq6900";
-import { PrimusAdapter } from "@elizaos/plugin-primus";
-import createZilliqaPlugin from "@elizaos/plugin-zilliqa";
 // import { intifacePlugin } from "@elizaos/plugin-intiface";
-import { akashPlugin } from "@elizaos/plugin-akash";
 import { birdeyePlugin } from "@elizaos/plugin-birdeye";
 import { hyperliquidPlugin } from "@elizaos/plugin-hyperliquid";
 import { imageGenerationPlugin } from "@elizaos/plugin-image-generation";
-import { nftGenerationPlugin } from "@elizaos/plugin-nft-generation";
-import { createNodePlugin } from "@elizaos/plugin-node";
-import { OpacityAdapter } from "@elizaos/plugin-opacity";
-import { solanaPlugin } from "@elizaos/plugin-solana";
 import { solanaAgentkitPlugin } from "@elizaos/plugin-solana-agent-kit";
-import { solanaPluginV2 } from "@elizaos/plugin-solana-v2";
 import { TEEMode, teePlugin } from "@elizaos/plugin-tee";
 import { teeLogPlugin } from "@elizaos/plugin-tee-log";
-import { verifiableLogPlugin } from "@elizaos/plugin-tee-verifiable-log";
 import { webSearchPlugin } from "@elizaos/plugin-web-search";
-import Database from "better-sqlite3";
 import fs from "fs";
-import { MongoClient } from "mongodb";
 import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -146,65 +123,6 @@ function mergeCharacters(base: Character, child: Character): Character {
         return result;
     };
     return mergeObjects(base, child);
-}
-function isAllStrings(arr: unknown[]): boolean {
-    return Array.isArray(arr) && arr.every((item) => typeof item === "string");
-}
-export async function loadCharacterFromOnchain(): Promise<Character[]> {
-    const jsonText = onchainJson;
-
-    console.log("JSON:", jsonText);
-    if (!jsonText) return [];
-    const loadedCharacters = [];
-    try {
-        const character = JSON.parse(jsonText);
-        validateCharacterConfig(character);
-
-        // .id isn't really valid
-        const characterId = character.id || character.name;
-        const characterPrefix = `CHARACTER.${characterId
-            .toUpperCase()
-            .replace(/ /g, "_")}.`;
-
-        const characterSettings = Object.entries(process.env)
-            .filter(([key]) => key.startsWith(characterPrefix))
-            .reduce((settings, [key, value]) => {
-                const settingKey = key.slice(characterPrefix.length);
-                settings[settingKey] = value;
-                return settings;
-            }, {});
-
-        if (Object.keys(characterSettings).length > 0) {
-            character.settings = character.settings || {};
-            character.settings.secrets = {
-                ...characterSettings,
-                ...character.settings.secrets,
-            };
-        }
-
-        // Handle plugins
-        if (isAllStrings(character.plugins)) {
-            elizaLogger.info("Plugins are: ", character.plugins);
-            const importedPlugins = await Promise.all(
-                character.plugins.map(async (plugin) => {
-                    const importedPlugin = await import(plugin);
-                    return importedPlugin.default;
-                })
-            );
-            character.plugins = importedPlugins;
-        }
-
-        loadedCharacters.push(character);
-        elizaLogger.info(
-            `Successfully loaded character from: ${process.env.IQ_WALLET_ADDRESS}`
-        );
-        return loadedCharacters;
-    } catch (e) {
-        elizaLogger.error(
-            `Error parsing character from ${process.env.IQ_WALLET_ADDRESS}: ${e}`
-        );
-        process.exit(1);
-    }
 }
 
 async function loadCharactersFromUrl(url: string): Promise<Character[]> {
@@ -590,128 +508,38 @@ export function getTokenForProvider(
     }
 }
 
-function initializeDatabase(dataDir: string) {
-    if (process.env.MONGODB_CONNECTION_STRING) {
-        elizaLogger.log("Initializing database on MongoDB Atlas");
-        const client = new MongoClient(process.env.MONGODB_CONNECTION_STRING, {
-            maxPoolSize: 100,
-            minPoolSize: 5,
-            maxIdleTimeMS: 60000,
-            connectTimeoutMS: 10000,
-            serverSelectionTimeoutMS: 5000,
-            socketTimeoutMS: 45000,
-            compressors: ["zlib"],
-            retryWrites: true,
-            retryReads: true,
+function initializeDatabase() {
+    elizaLogger.info("Initializing PostgreSQL connection...");
+    elizaLogger.debug(
+        "PostgreSQL URL:",
+        process.env.POSTGRES_URL.replace(/:[^:@]*@/, ":***@")
+    ); // Hide password
+
+    const db = new PostgresDatabaseAdapter({
+        connectionString: process.env.POSTGRES_URL,
+        parseInputs: true,
+    });
+
+    // Add more detailed logging for connection steps
+    elizaLogger.info("Created PostgreSQL adapter, attempting to initialize...");
+
+    db.init()
+        .then(() => {
+            elizaLogger.success(
+                "Successfully connected to PostgreSQL database"
+            );
+        })
+        .catch((error) => {
+            elizaLogger.error("Failed to connect to PostgreSQL:", {
+                message: error.message,
+                code: error.code,
+                detail: error.detail,
+            });
+            // Re-throw to handle in the calling code
+            throw error;
         });
 
-        const dbName = process.env.MONGODB_DATABASE || "elizaAgent";
-        const db = new MongoDBDatabaseAdapter(client, dbName);
-
-        // Test the connection
-        db.init()
-            .then(() => {
-                elizaLogger.success("Successfully connected to MongoDB Atlas");
-            })
-            .catch((error) => {
-                elizaLogger.error("Failed to connect to MongoDB Atlas:", error);
-                throw error; // Re-throw to handle it in the calling code
-            });
-
-        return db;
-    } else if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
-        elizaLogger.info("Initializing Supabase connection...");
-        const db = new SupabaseDatabaseAdapter(
-            process.env.SUPABASE_URL,
-            process.env.SUPABASE_ANON_KEY
-        );
-
-        // Test the connection
-        db.init()
-            .then(() => {
-                elizaLogger.success(
-                    "Successfully connected to Supabase database"
-                );
-            })
-            .catch((error) => {
-                elizaLogger.error("Failed to connect to Supabase:", error);
-            });
-
-        return db;
-    } else if (process.env.POSTGRES_URL) {
-        elizaLogger.info("Initializing PostgreSQL connection...");
-        elizaLogger.debug(
-            "PostgreSQL URL:",
-            process.env.POSTGRES_URL.replace(/:[^:@]*@/, ":***@")
-        ); // Hide password
-
-        const db = new PostgresDatabaseAdapter({
-            connectionString: process.env.POSTGRES_URL,
-            parseInputs: true,
-        });
-
-        // Add more detailed logging for connection steps
-        elizaLogger.info(
-            "Created PostgreSQL adapter, attempting to initialize..."
-        );
-
-        db.init()
-            .then(() => {
-                elizaLogger.success(
-                    "Successfully connected to PostgreSQL database"
-                );
-            })
-            .catch((error) => {
-                elizaLogger.error("Failed to connect to PostgreSQL:", {
-                    message: error.message,
-                    code: error.code,
-                    detail: error.detail,
-                });
-                // Re-throw to handle in the calling code
-                throw error;
-            });
-
-        return db;
-    } else if (process.env.PGLITE_DATA_DIR) {
-        elizaLogger.info("Initializing PgLite adapter...");
-        // `dataDir: memory://` for in memory pg
-        const db = new PGLiteDatabaseAdapter({
-            dataDir: process.env.PGLITE_DATA_DIR,
-        });
-        return db;
-    } else if (
-        process.env.QDRANT_URL &&
-        process.env.QDRANT_KEY &&
-        process.env.QDRANT_PORT &&
-        process.env.QDRANT_VECTOR_SIZE
-    ) {
-        elizaLogger.info("Initializing Qdrant adapter...");
-        const db = new QdrantDatabaseAdapter(
-            process.env.QDRANT_URL,
-            process.env.QDRANT_KEY,
-            Number(process.env.QDRANT_PORT),
-            Number(process.env.QDRANT_VECTOR_SIZE)
-        );
-        return db;
-    } else {
-        const filePath =
-            process.env.SQLITE_FILE ?? path.resolve(dataDir, "db.sqlite");
-        elizaLogger.info(`Initializing SQLite database at ${filePath}...`);
-        const db = new SqliteDatabaseAdapter(new Database(filePath));
-
-        // Test the connection
-        db.init()
-            .then(() => {
-                elizaLogger.success(
-                    "Successfully connected to SQLite database"
-                );
-            })
-            .catch((error) => {
-                elizaLogger.error("Failed to connect to SQLite:", error);
-            });
-
-        return db;
-    }
+    return db;
 }
 
 // also adds plugins from character file into the runtime
@@ -731,11 +559,6 @@ export async function initializeClients(
         elizaLogger.info("Starting Auto Client");
         const autoClient = await AutoClientInterface.start(runtime);
         if (autoClient) clients.auto = autoClient;
-    }
-
-    if (clientTypes.includes(Clients.XMTP)) {
-        const xmtpClient = await XmtpClientInterface.start(runtime);
-        if (xmtpClient) clients.xmtp = xmtpClient;
     }
 
     if (clientTypes.includes(Clients.DISCORD)) {
@@ -762,13 +585,6 @@ export async function initializeClients(
         }
     }
 
-    if (clientTypes.includes(Clients.ALEXA)) {
-        const alexaClient = await AlexaClientInterface.start(runtime);
-        if (alexaClient) {
-            clients.alexa = alexaClient;
-        }
-    }
-
     if (clientTypes.includes(Clients.INSTAGRAM)) {
         const instagramClient = await InstagramClientInterface.start(runtime);
         if (instagramClient) {
@@ -787,20 +603,6 @@ export async function initializeClients(
         const lensClient = new LensAgentClient(runtime);
         lensClient.start();
         clients.lens = lensClient;
-    }
-
-    if (clientTypes.includes(Clients.SIMSAI)) {
-        const simsaiClient = await JeeterClientInterface.start(runtime);
-        if (simsaiClient) clients.simsai = simsaiClient;
-    }
-
-    elizaLogger.log("client keys", Object.keys(clients));
-
-    if (clientTypes.includes("deva")) {
-        if (clientTypes.includes("deva")) {
-            const devaClient = await DevaClientInterface.start(runtime);
-            if (devaClient) clients.deva = devaClient;
-        }
     }
 
     if (clientTypes.includes("slack")) {
@@ -856,8 +658,6 @@ export async function createAgent(
 ): Promise<AgentRuntime> {
     elizaLogger.log(`Creating runtime for character ${character.name}`);
 
-    nodePlugin ??= createNodePlugin();
-
     const teeMode = getSecret(character, "TEE_MODE") || "OFF";
     const walletSecretSalt = getSecret(character, "WALLET_SECRET_SALT");
 
@@ -867,21 +667,6 @@ export async function createAgent(
             "A WALLET_SECRET_SALT required when TEE_MODE is enabled"
         );
         throw new Error("Invalid TEE configuration");
-    }
-
-    let goatPlugin: any | undefined;
-
-    if (getSecret(character, "EVM_PRIVATE_KEY")) {
-        goatPlugin = await createGoatPlugin((secret) =>
-            getSecret(character, secret)
-        );
-    }
-
-    let zilliqaPlugin: any | undefined;
-    if (getSecret(character, "ZILLIQA_PRIVATE_KEY")) {
-        zilliqaPlugin = await createZilliqaPlugin((secret) =>
-            getSecret(character, secret)
-        );
     }
 
     // Initialize Reclaim adapter if environment variables are present
@@ -901,40 +686,6 @@ export async function createAgent(
     // }
     // Initialize Opacity adapter if environment variables are present
     let verifiableInferenceAdapter;
-    if (
-        process.env.OPACITY_TEAM_ID &&
-        process.env.OPACITY_CLOUDFLARE_NAME &&
-        process.env.OPACITY_PROVER_URL &&
-        process.env.VERIFIABLE_INFERENCE_ENABLED === "true"
-    ) {
-        verifiableInferenceAdapter = new OpacityAdapter({
-            teamId: process.env.OPACITY_TEAM_ID,
-            teamName: process.env.OPACITY_CLOUDFLARE_NAME,
-            opacityProverUrl: process.env.OPACITY_PROVER_URL,
-            modelProvider: character.modelProvider,
-            token: token,
-        });
-        elizaLogger.log("Verifiable inference adapter initialized");
-        elizaLogger.log("teamId", process.env.OPACITY_TEAM_ID);
-        elizaLogger.log("teamName", process.env.OPACITY_CLOUDFLARE_NAME);
-        elizaLogger.log("opacityProverUrl", process.env.OPACITY_PROVER_URL);
-        elizaLogger.log("modelProvider", character.modelProvider);
-        elizaLogger.log("token", token);
-    }
-    if (
-        process.env.PRIMUS_APP_ID &&
-        process.env.PRIMUS_APP_SECRET &&
-        process.env.VERIFIABLE_INFERENCE_ENABLED === "true"
-    ) {
-        verifiableInferenceAdapter = new PrimusAdapter({
-            appId: process.env.PRIMUS_APP_ID,
-            appSecret: process.env.PRIMUS_APP_SECRET,
-            attMode: "proxytls",
-            modelProvider: character.modelProvider,
-            token,
-        });
-        elizaLogger.log("Verifiable inference primus adapter initialized");
-    }
 
     return new AgentRuntime({
         databaseAdapter: db,
@@ -947,24 +698,17 @@ export async function createAgent(
             bootstrapPlugin,
             getSecret(character, "TAVILY_API_KEY") ? webSearchPlugin : null,
             getSecret(character, "SOLANA_PUBLIC_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
-                ? [solanaPlugin, solanaPluginV2]
-                : null,
             getSecret(character, "SOLANA_PRIVATE_KEY")
                 ? solanaAgentkitPlugin
                 : null,
-            (getSecret(character, "SOLANA_PUBLIC_KEY") ||
+            ((getSecret(character, "SOLANA_PUBLIC_KEY") ||
                 (getSecret(character, "WALLET_PUBLIC_KEY") &&
                     !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith(
                         "0x"
                     ))) &&
-            getSecret(character, "SOLANA_ADMIN_PUBLIC_KEY") &&
-            getSecret(character, "SOLANA_PRIVATE_KEY") &&
-            getSecret(character, "SOLANA_ADMIN_PRIVATE_KEY")
-                ? nftGenerationPlugin
-                : null,
-            getSecret(character, "FAL_API_KEY") ||
+                getSecret(character, "SOLANA_ADMIN_PUBLIC_KEY") &&
+                getSecret(character, "SOLANA_PRIVATE_KEY") &&
+                getSecret(character, "FAL_API_KEY")) ||
             getSecret(character, "OPENAI_API_KEY") ||
             getSecret(character, "VENICE_API_KEY") ||
             getSecret(character, "NVIDIA_API_KEY") ||
@@ -976,9 +720,6 @@ export async function createAgent(
             ...(teeMode !== TEEMode.OFF && walletSecretSalt ? [teePlugin] : []),
             teeMode !== TEEMode.OFF &&
             walletSecretSalt &&
-            getSecret(character, "VLOG")
-                ? verifiableLogPlugin
-                : null,
             getSecret(character, "ENABLE_TEE_LOG") &&
             ((teeMode !== TEEMode.OFF && walletSecretSalt) ||
                 getSecret(character, "SGX"))
@@ -990,10 +731,6 @@ export async function createAgent(
                 : null,
             getSecret(character, "HYPERLIQUID_TESTNET")
                 ? hyperliquidPlugin
-                : null,
-            getSecret(character, "AKASH_MNEMONIC") &&
-            getSecret(character, "AKASH_WALLET_ADDRESS")
-                ? akashPlugin
                 : null,
         ]
             .flat()
@@ -1093,8 +830,7 @@ async function startAgent(
             fs.mkdirSync(dataDir, { recursive: true });
         }
 
-        db = initializeDatabase(dataDir) as IDatabaseAdapter &
-            IDatabaseCacheAdapter;
+        db = initializeDatabase() as IDatabaseAdapter & IDatabaseCacheAdapter;
 
         await db.init();
 
@@ -1175,22 +911,12 @@ const startAgents = async () => {
     const charactersArg = args.characters || args.character;
     let characters = [defaultCharacter];
 
-    if (process.env.IQ_WALLET_ADDRESS && process.env.IQSOlRPC) {
-        characters = await loadCharacterFromOnchain();
-    }
-
-    const notOnchainJson = !onchainJson || onchainJson == "null";
-
-    if ((notOnchainJson && charactersArg) || hasValidRemoteUrls()) {
-        characters = await loadCharacters(charactersArg);
-    }
-
     /*
      * START CUSTOM FORGEAI CODE
      */
     if (settings.LOAD_AGENTS_FROM_DB && settings.POSTGRES_URL) {
         elizaLogger.info("Attempting to load agents from database...");
-        const db = initializeDatabase("") as PostgresDatabaseAdapter;
+        const db = initializeDatabase() as PostgresDatabaseAdapter;
         elizaLogger.info("Database adapter created, initializing...");
 
         try {
@@ -1208,7 +934,6 @@ const startAgents = async () => {
                 })
             );
             elizaLogger.info(`Loaded ${characters.length} characters`);
-            elizaLogger.info("Characters:", characters);
         } catch (error) {
             elizaLogger.error("Error loading agents from database:", {
                 message: error.message,
@@ -1220,9 +945,6 @@ const startAgents = async () => {
     /*
      * END CUSTOM FORGEAI CODE
      */
-
-    // Normalize characters for injectable plugins
-    characters = await Promise.all(characters.map(normalizeCharacter));
 
     try {
         for (const character of characters) {

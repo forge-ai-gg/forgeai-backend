@@ -1,0 +1,864 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = []
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ActivityLog {
+  id                                 String       @id
+  title                              String
+  description                        String
+  entity                             String
+  entityId                           String
+  operation                          String
+  metadata                           Json?
+  createdAt                          DateTime     @default(now())
+  updatedAt                          DateTime     @default(now())
+  createdById                        String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                        String       @default("00000000-0000-0000-0000-000000000000")
+  organizationId                     String
+  User_ActivityLog_createdByIdToUser User         @relation("ActivityLog_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_ActivityLog_updatedByIdToUser User         @relation("ActivityLog_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdAt])
+  @@index([createdById])
+  @@index([entity, entityId])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+model Agent {
+  id                           String                    @id
+  description                  String
+  schema                       String
+  organizationId               String
+  accountId                    String                    @db.Uuid
+  createdAt                    DateTime                  @default(now())
+  updatedAt                    DateTime                  @default(now())
+  createdById                  String                    @default("00000000-0000-0000-0000-000000000000")
+  updatedById                  String                    @default("00000000-0000-0000-0000-000000000000")
+  lastActivatedAt              DateTime?
+  name                         String
+  avatarUrl                    String?
+  balance                      Int                       @default(0)
+  pnl                          Int                       @default(0)
+  class                        String                    @default("")
+  experienceLevel              Int                       @default(0)
+  experiencePoints             Int                       @default(0)
+  pvpLosses                    Int                       @default(0)
+  pvpWins                      Int                       @default(0)
+  experiencePointsRequired     Int                       @default(100)
+  initialGreeting              String?
+  lastDeactivatedAt            DateTime?
+  status                       String                    @default("inactive")
+  username                     String?
+  accounts                     accounts                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  User_Agent_createdByIdToUser User                      @relation("Agent_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                 Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_Agent_updatedByIdToUser User                      @relation("Agent_updatedByIdToUser", fields: [updatedById], references: [id])
+  AgentStrategyAssignment      AgentStrategyAssignment[]
+  AgentTournament              AgentTournament[]
+  Wallet                       Wallet[]
+  WalletTransaction            WalletTransaction[]
+
+  @@index([accountId])
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+model AgentStrategyAssignment {
+  agentId                                        String
+  strategyId                                     String
+  startDate                                      DateTime
+  endDate                                        DateTime?
+  isActive                                       Boolean              @default(true)
+  createdAt                                      DateTime             @default(now())
+  updatedAt                                      DateTime             @default(now())
+  createdById                                    String               @default("00000000-0000-0000-0000-000000000000")
+  updatedById                                    String               @default("00000000-0000-0000-0000-000000000000")
+  id                                             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  config                                         Json?                @default("{}")
+  Agent                                          Agent                @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  User_AgentStrategyAssignment_createdByIdToUser User                 @relation("AgentStrategyAssignment_createdByIdToUser", fields: [createdById], references: [id])
+  AgentTradingStrategy                           AgentTradingStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  User_AgentStrategyAssignment_updatedByIdToUser User                 @relation("AgentStrategyAssignment_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@unique([agentId, isActive])
+  @@index([agentId])
+  @@index([agentId, isActive])
+  @@index([createdById])
+  @@index([strategyId])
+  @@index([updatedById])
+}
+
+model AgentTournament {
+  id           String     @id
+  agentId      String
+  tournamentId String
+  joinedAt     DateTime   @default(now())
+  status       String     @default("JOINED")
+  rank         Int?
+  score        Float?
+  metadata     Json?      @default("{}")
+  Agent        Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  Tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, tournamentId])
+  @@index([agentId])
+  @@index([status])
+  @@index([tournamentId])
+}
+
+model AgentTradingStrategy {
+  id                                          String                    @id
+  title                                       String
+  shortDescription                            String
+  longDescription                             String
+  organizationId                              String
+  createdAt                                   DateTime                  @default(now())
+  updatedAt                                   DateTime                  @default(now())
+  createdById                                 String                    @default("00000000-0000-0000-0000-000000000000")
+  updatedById                                 String                    @default("00000000-0000-0000-0000-000000000000")
+  class                                       String
+  subclass                                    String?
+  defaultConfig                               Json?                     @default("{}")
+  AgentStrategyAssignment                     AgentStrategyAssignment[]
+  User_AgentTradingStrategy_createdByIdToUser User                      @relation("AgentTradingStrategy_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                                Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_AgentTradingStrategy_updatedByIdToUser User                      @relation("AgentTradingStrategy_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ChatConversation {
+  id                                      String                  @id
+  userId                                  String
+  title                                   String
+  organizationId                          String
+  createdAt                               DateTime                @default(now())
+  updatedAt                               DateTime                @default(now())
+  createdById                             String                  @default("00000000-0000-0000-0000-000000000000")
+  updatedById                             String                  @default("00000000-0000-0000-0000-000000000000")
+  User_ChatConversation_createdByIdToUser User                    @relation("ChatConversation_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                            Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_ChatConversation_updatedByIdToUser User                    @relation("ChatConversation_updatedByIdToUser", fields: [updatedById], references: [id])
+  User_ChatConversation_userIdToUser      User                    @relation("ChatConversation_userIdToUser", fields: [userId], references: [id], onDelete: Cascade)
+  ChatConversationFiles                   ChatConversationFiles[]
+  ChatMessage                             ChatMessage[]
+
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+  @@index([userId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ChatConversationFiles {
+  id                                           String           @id
+  fileId                                       String
+  conversationId                               String
+  createdAt                                    DateTime         @default(now())
+  updatedAt                                    DateTime         @default(now())
+  createdById                                  String           @default("00000000-0000-0000-0000-000000000000")
+  updatedById                                  String           @default("00000000-0000-0000-0000-000000000000")
+  ChatConversation                             ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  User_ChatConversationFiles_createdByIdToUser User             @relation("ChatConversationFiles_createdByIdToUser", fields: [createdById], references: [id])
+  UploadedFile                                 UploadedFile     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  User_ChatConversationFiles_updatedByIdToUser User             @relation("ChatConversationFiles_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@unique([fileId, conversationId])
+  @@index([conversationId])
+  @@index([createdById])
+  @@index([fileId])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ChatMessage {
+  id                                 String           @id
+  content                            String
+  role                               String
+  userId                             String
+  organizationId                     String
+  conversationId                     String
+  createdAt                          DateTime         @default(now())
+  updatedAt                          DateTime         @default(now())
+  createdById                        String           @default("00000000-0000-0000-0000-000000000000")
+  updatedById                        String           @default("00000000-0000-0000-0000-000000000000")
+  ChatConversation                   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  User_ChatMessage_createdByIdToUser User             @relation("ChatMessage_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                       Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_ChatMessage_updatedByIdToUser User             @relation("ChatMessage_updatedByIdToUser", fields: [updatedById], references: [id])
+  User_ChatMessage_userIdToUser      User             @relation("ChatMessage_userIdToUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+  @@index([userId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model EmailLog {
+  id                              String       @id
+  organizationId                  String
+  userId                          String
+  to                              String[]
+  from                            String
+  subject                         String
+  body                            String
+  cc                              String[]
+  bcc                             String[]
+  replyTo                         String[]
+  status                          String
+  errorMessage                    String?
+  messageId                       String?
+  createdAt                       DateTime     @default(now())
+  updatedAt                       DateTime     @default(now())
+  createdById                     String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                     String       @default("00000000-0000-0000-0000-000000000000")
+  User_EmailLog_createdByIdToUser User         @relation("EmailLog_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_EmailLog_updatedByIdToUser User         @relation("EmailLog_updatedByIdToUser", fields: [updatedById], references: [id])
+  User_EmailLog_userIdToUser      User         @relation("EmailLog_userIdToUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+  @@index([userId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ExampleTask {
+  id                                 String       @id
+  title                              String
+  status                             String
+  label                              String
+  priority                           String
+  organizationId                     String
+  createdAt                          DateTime     @default(now())
+  updatedAt                          DateTime     @default(now())
+  createdById                        String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                        String       @default("00000000-0000-0000-0000-000000000000")
+  User_ExampleTask_createdByIdToUser User         @relation("ExampleTask_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_ExampleTask_updatedByIdToUser User         @relation("ExampleTask_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Organization {
+  id                                  String                 @id
+  name                                String
+  slug                                String                 @unique
+  description                         String?
+  plan                                String                 @default("Free")
+  settings                            Json?                  @default("{}")
+  createdAt                           DateTime               @default(now())
+  updatedAt                           DateTime               @default(now())
+  createdById                         String                 @default("00000000-0000-0000-0000-000000000000")
+  updatedById                         String                 @default("00000000-0000-0000-0000-000000000000")
+  ActivityLog                         ActivityLog[]
+  Agent                               Agent[]
+  AgentTradingStrategy                AgentTradingStrategy[]
+  ChatConversation                    ChatConversation[]
+  ChatMessage                         ChatMessage[]
+  EmailLog                            EmailLog[]
+  ExampleTask                         ExampleTask[]
+  User_Organization_createdByIdToUser User                   @relation("Organization_createdByIdToUser", fields: [createdById], references: [id])
+  User_Organization_updatedByIdToUser User                   @relation("Organization_updatedByIdToUser", fields: [updatedById], references: [id])
+  OrganizationMember                  OrganizationMember[]
+  Permission                          Permission[]
+  Role                                Role[]
+  Story                               Story[]
+  StoryType                           StoryType[]
+  Tournament                          Tournament[]
+  UploadedFile                        UploadedFile[]
+
+  @@index([createdById])
+  @@index([slug])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model OrganizationMember {
+  id                                        String       @id
+  organizationId                            String
+  userId                                    String
+  roleId                                    String
+  isOwner                                   Boolean      @default(false)
+  createdAt                                 DateTime     @default(now())
+  updatedAt                                 DateTime     @default(now())
+  createdById                               String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                               String       @default("00000000-0000-0000-0000-000000000000")
+  User_OrganizationMember_createdByIdToUser User         @relation("OrganizationMember_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                              Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  Role                                      Role         @relation(fields: [roleId], references: [id])
+  User_OrganizationMember_updatedByIdToUser User         @relation("OrganizationMember_updatedByIdToUser", fields: [updatedById], references: [id])
+  User_OrganizationMember_userIdToUser      User         @relation("OrganizationMember_userIdToUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([roleId])
+  @@index([updatedById])
+  @@index([userId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Permission {
+  id                                String       @id
+  entity                            String       @default("all")
+  operation                         String       @default("all")
+  name                              String
+  description                       String?
+  type                              String
+  organizationId                    String
+  createdAt                         DateTime     @default(now())
+  updatedAt                         DateTime     @default(now())
+  createdById                       String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                       String       @default("00000000-0000-0000-0000-000000000000")
+  User_Permission_createdByIdToUser User         @relation("Permission_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_Permission_updatedByIdToUser User         @relation("Permission_updatedByIdToUser", fields: [updatedById], references: [id])
+  Role                              Role[]
+
+  @@unique([organizationId, entity, operation])
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Role {
+  id                          String               @id
+  name                        String
+  description                 String?
+  organizationId              String
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @default(now())
+  createdById                 String               @default("00000000-0000-0000-0000-000000000000")
+  updatedById                 String               @default("00000000-0000-0000-0000-000000000000")
+  OrganizationMember          OrganizationMember[]
+  User_Role_createdByIdToUser User                 @relation("Role_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_Role_updatedByIdToUser User                 @relation("Role_updatedByIdToUser", fields: [updatedById], references: [id])
+  Permission                  Permission[]
+
+  @@unique([organizationId, name])
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Scene {
+  sceneId                      Int          @id @default(autoincrement())
+  script                       String
+  description                  String
+  scenesJson                   String
+  coverImageUrl                String
+  sceneStatus                  String
+  imagePrompts                 Json
+  storyId                      Int
+  createdAt                    DateTime     @default(now())
+  updatedAt                    DateTime     @default(now())
+  createdById                  String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                  String       @default("00000000-0000-0000-0000-000000000000")
+  User_Scene_createdByIdToUser User         @relation("Scene_createdByIdToUser", fields: [createdById], references: [id])
+  Story                        Story        @relation(fields: [storyId], references: [storyId])
+  User_Scene_updatedByIdToUser User         @relation("Scene_updatedByIdToUser", fields: [updatedById], references: [id])
+  SceneAudio                   SceneAudio[]
+  SceneImage                   SceneImage[]
+  SceneVideo                   SceneVideo[]
+
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model SceneAudio {
+  audioId                           Int      @id @default(autoincrement())
+  audioUrl                          String
+  audioPrompt                       String
+  audioWidth                        Int
+  audioHeight                       Int
+  sceneId                           Int
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @default(now())
+  createdById                       String   @default("00000000-0000-0000-0000-000000000000")
+  updatedById                       String   @default("00000000-0000-0000-0000-000000000000")
+  User_SceneAudio_createdByIdToUser User     @relation("SceneAudio_createdByIdToUser", fields: [createdById], references: [id])
+  Scene                             Scene    @relation(fields: [sceneId], references: [sceneId])
+  User_SceneAudio_updatedByIdToUser User     @relation("SceneAudio_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model SceneImage {
+  imageId                           Int          @id @default(autoincrement())
+  imageUrl                          String
+  imagePrompt                       String
+  imageWidth                        Int
+  imageHeight                       Int
+  sceneId                           Int
+  createdAt                         DateTime     @default(now())
+  updatedAt                         DateTime     @default(now())
+  createdById                       String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                       String       @default("00000000-0000-0000-0000-000000000000")
+  User_SceneImage_createdByIdToUser User         @relation("SceneImage_createdByIdToUser", fields: [createdById], references: [id])
+  Scene                             Scene        @relation(fields: [sceneId], references: [sceneId])
+  User_SceneImage_updatedByIdToUser User         @relation("SceneImage_updatedByIdToUser", fields: [updatedById], references: [id])
+  SceneVideo                        SceneVideo[]
+
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model SceneVideo {
+  videoId                           Int         @id @default(autoincrement())
+  videoUrl                          String
+  videoPrompt                       String
+  videoWidth                        Int
+  videoHeight                       Int
+  imageId                           Int?
+  sceneId                           Int
+  createdAt                         DateTime    @default(now())
+  updatedAt                         DateTime    @default(now())
+  createdById                       String      @default("00000000-0000-0000-0000-000000000000")
+  updatedById                       String      @default("00000000-0000-0000-0000-000000000000")
+  User_SceneVideo_createdByIdToUser User        @relation("SceneVideo_createdByIdToUser", fields: [createdById], references: [id])
+  SceneImage                        SceneImage? @relation(fields: [imageId], references: [imageId])
+  Scene                             Scene       @relation(fields: [sceneId], references: [sceneId])
+  User_SceneVideo_updatedByIdToUser User        @relation("SceneVideo_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Story {
+  storyId                      Int          @id @default(autoincrement())
+  title                        String
+  script                       String
+  headline                     String
+  intro                        String
+  interestStatement            String
+  storyDetails                 String
+  callToAction                 String
+  scenesJson                   String
+  coverImageUrl                String
+  storyStatus                  String
+  storyTypeId                  Int
+  organizationId               String
+  createdAt                    DateTime     @default(now())
+  updatedAt                    DateTime     @default(now())
+  createdById                  String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                  String       @default("00000000-0000-0000-0000-000000000000")
+  Scene                        Scene[]
+  User_Story_createdByIdToUser User         @relation("Story_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                 Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  StoryType                    StoryType    @relation(fields: [storyTypeId], references: [storyTypeId])
+  User_Story_updatedByIdToUser User         @relation("Story_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model StoryType {
+  storyTypeId                      Int          @id @default(autoincrement())
+  title                            String
+  description                      String
+  isActive                         Boolean      @default(true)
+  promptText                       String
+  scenesJsonPrompt                 String
+  coverImagePrompt                 String
+  outputWidth                      Int
+  outputHeight                     Int
+  imageWidth                       Int
+  imageHeight                      Int
+  organizationId                   String
+  createdAt                        DateTime     @default(now())
+  updatedAt                        DateTime     @default(now())
+  createdById                      String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                      String       @default("00000000-0000-0000-0000-000000000000")
+  Story                            Story[]
+  User_StoryType_createdByIdToUser User         @relation("StoryType_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_StoryType_updatedByIdToUser User         @relation("StoryType_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+}
+
+model Tournament {
+  id                                String            @id
+  name                              String
+  description                       String
+  startDate                         DateTime
+  endDate                           DateTime
+  registrationDeadline              DateTime
+  maxParticipants                   Int
+  currentParticipants               Int               @default(0)
+  prize                             Float
+  prizeType                         String
+  entryFee                          Float             @default(0)
+  entryFeeType                      String            @default("FREE")
+  rules                             String
+  rounds                            Int?
+  currentRound                      Int?
+  platformFee                       Float?
+  platformFeePercentage             Float?
+  tags                              String[]
+  requirements                      Json              @default("{}")
+  metadata                          Json?             @default("{}")
+  sponsorIds                        String[]          @default([])
+  isTeamBased                       Boolean           @default(false)
+  teamSize                          Int?
+  minTeamSize                       Int?
+  maxTeamSize                       Int?
+  organizationId                    String
+  createdAt                         DateTime          @default(now())
+  updatedAt                         DateTime
+  createdById                       String            @default("00000000-0000-0000-0000-000000000000")
+  updatedById                       String            @default("00000000-0000-0000-0000-000000000000")
+  hostId                            String
+  imageUrl                          String?
+  type                              String            @default("crypto")
+  status                            String            @default("upcoming")
+  visibility                        String            @default("public")
+  format                            String            @default("single_elimination")
+  AgentTournament                   AgentTournament[]
+  User_Tournament_createdByIdToUser User              @relation("Tournament_createdByIdToUser", fields: [createdById], references: [id])
+  User_Tournament_hostIdToUser      User              @relation("Tournament_hostIdToUser", fields: [hostId], references: [id])
+  Organization                      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  User_Tournament_updatedByIdToUser User              @relation("Tournament_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([hostId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([type])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model UploadedFile {
+  id                                  String                  @id
+  bucketId                            String
+  fileName                            String
+  folderPath                          String
+  organizationId                      String
+  userId                              String
+  metadata                            Json?
+  numChunks                           Int                     @default(0)
+  createdAt                           DateTime                @default(now())
+  updatedAt                           DateTime                @default(now())
+  createdById                         String                  @default("00000000-0000-0000-0000-000000000000")
+  updatedById                         String                  @default("00000000-0000-0000-0000-000000000000")
+  ChatConversationFiles               ChatConversationFiles[]
+  User_UploadedFile_createdByIdToUser User                    @relation("UploadedFile_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                        Organization            @relation(fields: [organizationId], references: [id])
+  User_UploadedFile_updatedByIdToUser User                    @relation("UploadedFile_updatedByIdToUser", fields: [updatedById], references: [id])
+  User_UploadedFile_userIdToUser      User                    @relation("UploadedFile_userIdToUser", fields: [userId], references: [id])
+  UploadedFileContent                 UploadedFileContent?
+
+  @@unique([bucketId, fileName])
+  @@index([createdById])
+  @@index([organizationId])
+  @@index([updatedById])
+  @@index([userId])
+}
+
+model UploadedFileContent {
+  id                                         String       @id
+  content                                    String
+  summary                                    String?
+  metadata                                   Json?
+  fileId                                     String       @unique
+  createdAt                                  DateTime     @default(now())
+  updatedAt                                  DateTime     @default(now())
+  createdById                                String       @default("00000000-0000-0000-0000-000000000000")
+  updatedById                                String       @default("00000000-0000-0000-0000-000000000000")
+  User_UploadedFileContent_createdByIdToUser User         @relation("UploadedFileContent_createdByIdToUser", fields: [createdById], references: [id])
+  UploadedFile                               UploadedFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  User_UploadedFileContent_updatedByIdToUser User         @relation("UploadedFileContent_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model User {
+  id                                                                String                    @id
+  email                                                             String                    @unique
+  username                                                          String?                   @unique
+  fullName                                                          String?
+  avatarUrl                                                         String?
+  dateOfBirth                                                       DateTime?
+  language                                                          String?
+  emails                                                            String[]
+  selectedEmail                                                     String?
+  bio                                                               String?
+  urls                                                              String[]
+  font                                                              String?
+  theme                                                             String?
+  notificationSettings                                              Json?
+  displayPreferences                                                Json?
+  createdAt                                                         DateTime                  @default(now())
+  updatedAt                                                         DateTime
+  createdById                                                       String                    @default("00000000-0000-0000-0000-000000000000")
+  updatedById                                                       String                    @default("00000000-0000-0000-0000-000000000000")
+  ActivityLog_ActivityLog_createdByIdToUser                         ActivityLog[]             @relation("ActivityLog_createdByIdToUser")
+  ActivityLog_ActivityLog_updatedByIdToUser                         ActivityLog[]             @relation("ActivityLog_updatedByIdToUser")
+  Agent_Agent_createdByIdToUser                                     Agent[]                   @relation("Agent_createdByIdToUser")
+  Agent_Agent_updatedByIdToUser                                     Agent[]                   @relation("Agent_updatedByIdToUser")
+  AgentStrategyAssignment_AgentStrategyAssignment_createdByIdToUser AgentStrategyAssignment[] @relation("AgentStrategyAssignment_createdByIdToUser")
+  AgentStrategyAssignment_AgentStrategyAssignment_updatedByIdToUser AgentStrategyAssignment[] @relation("AgentStrategyAssignment_updatedByIdToUser")
+  AgentTradingStrategy_AgentTradingStrategy_createdByIdToUser       AgentTradingStrategy[]    @relation("AgentTradingStrategy_createdByIdToUser")
+  AgentTradingStrategy_AgentTradingStrategy_updatedByIdToUser       AgentTradingStrategy[]    @relation("AgentTradingStrategy_updatedByIdToUser")
+  ChatConversation_ChatConversation_createdByIdToUser               ChatConversation[]        @relation("ChatConversation_createdByIdToUser")
+  ChatConversation_ChatConversation_updatedByIdToUser               ChatConversation[]        @relation("ChatConversation_updatedByIdToUser")
+  ChatConversation_ChatConversation_userIdToUser                    ChatConversation[]        @relation("ChatConversation_userIdToUser")
+  ChatConversationFiles_ChatConversationFiles_createdByIdToUser     ChatConversationFiles[]   @relation("ChatConversationFiles_createdByIdToUser")
+  ChatConversationFiles_ChatConversationFiles_updatedByIdToUser     ChatConversationFiles[]   @relation("ChatConversationFiles_updatedByIdToUser")
+  ChatMessage_ChatMessage_createdByIdToUser                         ChatMessage[]             @relation("ChatMessage_createdByIdToUser")
+  ChatMessage_ChatMessage_updatedByIdToUser                         ChatMessage[]             @relation("ChatMessage_updatedByIdToUser")
+  ChatMessage_ChatMessage_userIdToUser                              ChatMessage[]             @relation("ChatMessage_userIdToUser")
+  EmailLog_EmailLog_createdByIdToUser                               EmailLog[]                @relation("EmailLog_createdByIdToUser")
+  EmailLog_EmailLog_updatedByIdToUser                               EmailLog[]                @relation("EmailLog_updatedByIdToUser")
+  EmailLog_EmailLog_userIdToUser                                    EmailLog[]                @relation("EmailLog_userIdToUser")
+  ExampleTask_ExampleTask_createdByIdToUser                         ExampleTask[]             @relation("ExampleTask_createdByIdToUser")
+  ExampleTask_ExampleTask_updatedByIdToUser                         ExampleTask[]             @relation("ExampleTask_updatedByIdToUser")
+  Organization_Organization_createdByIdToUser                       Organization[]            @relation("Organization_createdByIdToUser")
+  Organization_Organization_updatedByIdToUser                       Organization[]            @relation("Organization_updatedByIdToUser")
+  OrganizationMember_OrganizationMember_createdByIdToUser           OrganizationMember[]      @relation("OrganizationMember_createdByIdToUser")
+  OrganizationMember_OrganizationMember_updatedByIdToUser           OrganizationMember[]      @relation("OrganizationMember_updatedByIdToUser")
+  OrganizationMember_OrganizationMember_userIdToUser                OrganizationMember[]      @relation("OrganizationMember_userIdToUser")
+  Permission_Permission_createdByIdToUser                           Permission[]              @relation("Permission_createdByIdToUser")
+  Permission_Permission_updatedByIdToUser                           Permission[]              @relation("Permission_updatedByIdToUser")
+  Role_Role_createdByIdToUser                                       Role[]                    @relation("Role_createdByIdToUser")
+  Role_Role_updatedByIdToUser                                       Role[]                    @relation("Role_updatedByIdToUser")
+  Scene_Scene_createdByIdToUser                                     Scene[]                   @relation("Scene_createdByIdToUser")
+  Scene_Scene_updatedByIdToUser                                     Scene[]                   @relation("Scene_updatedByIdToUser")
+  SceneAudio_SceneAudio_createdByIdToUser                           SceneAudio[]              @relation("SceneAudio_createdByIdToUser")
+  SceneAudio_SceneAudio_updatedByIdToUser                           SceneAudio[]              @relation("SceneAudio_updatedByIdToUser")
+  SceneImage_SceneImage_createdByIdToUser                           SceneImage[]              @relation("SceneImage_createdByIdToUser")
+  SceneImage_SceneImage_updatedByIdToUser                           SceneImage[]              @relation("SceneImage_updatedByIdToUser")
+  SceneVideo_SceneVideo_createdByIdToUser                           SceneVideo[]              @relation("SceneVideo_createdByIdToUser")
+  SceneVideo_SceneVideo_updatedByIdToUser                           SceneVideo[]              @relation("SceneVideo_updatedByIdToUser")
+  Story_Story_createdByIdToUser                                     Story[]                   @relation("Story_createdByIdToUser")
+  Story_Story_updatedByIdToUser                                     Story[]                   @relation("Story_updatedByIdToUser")
+  StoryType_StoryType_createdByIdToUser                             StoryType[]               @relation("StoryType_createdByIdToUser")
+  StoryType_StoryType_updatedByIdToUser                             StoryType[]               @relation("StoryType_updatedByIdToUser")
+  Tournament_Tournament_createdByIdToUser                           Tournament[]              @relation("Tournament_createdByIdToUser")
+  Tournament_Tournament_hostIdToUser                                Tournament[]              @relation("Tournament_hostIdToUser")
+  Tournament_Tournament_updatedByIdToUser                           Tournament[]              @relation("Tournament_updatedByIdToUser")
+  UploadedFile_UploadedFile_createdByIdToUser                       UploadedFile[]            @relation("UploadedFile_createdByIdToUser")
+  UploadedFile_UploadedFile_updatedByIdToUser                       UploadedFile[]            @relation("UploadedFile_updatedByIdToUser")
+  UploadedFile_UploadedFile_userIdToUser                            UploadedFile[]            @relation("UploadedFile_userIdToUser")
+  UploadedFileContent_UploadedFileContent_createdByIdToUser         UploadedFileContent[]     @relation("UploadedFileContent_createdByIdToUser")
+  UploadedFileContent_UploadedFileContent_updatedByIdToUser         UploadedFileContent[]     @relation("UploadedFileContent_updatedByIdToUser")
+  Wallet_Wallet_createdByIdToUser                                   Wallet[]                  @relation("Wallet_createdByIdToUser")
+  Wallet_Wallet_updatedByIdToUser                                   Wallet[]                  @relation("Wallet_updatedByIdToUser")
+  WalletTransaction_WalletTransaction_createdByIdToUser             WalletTransaction[]       @relation("WalletTransaction_createdByIdToUser")
+  WalletTransaction_WalletTransaction_updatedByIdToUser             WalletTransaction[]       @relation("WalletTransaction_updatedByIdToUser")
+}
+
+model Wallet {
+  id                            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                          String
+  description                   String?
+  network                       String   @default("solana")
+  chainId                       String
+  publicKey                     String
+  privateKey                    String
+  agentId                       String
+  metadata                      Json?    @default("{}")
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @default(now())
+  createdById                   String   @default("00000000-0000-0000-0000-000000000000")
+  updatedById                   String   @default("00000000-0000-0000-0000-000000000000")
+  walletIndex                   Int      @default(0)
+  status                        String   @default("active")
+  Agent                         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  User_Wallet_createdByIdToUser User     @relation("Wallet_createdByIdToUser", fields: [createdById], references: [id])
+  User_Wallet_updatedByIdToUser User     @relation("Wallet_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@unique([agentId, walletIndex])
+  @@index([agentId])
+  @@index([chainId])
+  @@index([createdById])
+  @@index([network])
+  @@index([updatedById])
+}
+
+model WalletTransaction {
+  id                                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenAddress                             String
+  symbol                                   String
+  tokenUri                                 String?
+  amount                                   String
+  decimals                                 Int
+  usdValue                                 Float?
+  status                                   String    @default("pending")
+  type                                     String
+  hash                                     String?
+  agentId                                  String
+  memoryId                                 String?   @unique @db.Uuid
+  metadata                                 Json?     @default("{}")
+  createdAt                                DateTime  @default(now())
+  updatedAt                                DateTime  @default(now())
+  createdById                              String    @default("00000000-0000-0000-0000-000000000000")
+  updatedById                              String    @default("00000000-0000-0000-0000-000000000000")
+  Agent                                    Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  User_WalletTransaction_createdByIdToUser User      @relation("WalletTransaction_createdByIdToUser", fields: [createdById], references: [id])
+  memories                                 memories? @relation(fields: [memoryId], references: [id])
+  User_WalletTransaction_updatedByIdToUser User      @relation("WalletTransaction_updatedByIdToUser", fields: [updatedById], references: [id])
+
+  @@index([agentId])
+  @@index([createdById])
+  @@index([hash])
+  @@index([status])
+  @@index([tokenAddress])
+  @@index([type])
+  @@index([updatedById])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model accounts {
+  id                                           String          @id @db.Uuid
+  createdAt                                    DateTime?       @default(now()) @db.Timestamptz(6)
+  name                                         String?
+  username                                     String?
+  email                                        String
+  avatarUrl                                    String?
+  details                                      Json?           @default("{}")
+  Agent                                        Agent[]
+  goals                                        goals[]
+  logs                                         logs[]
+  memories_memories_agentIdToaccounts          memories[]      @relation("memories_agentIdToaccounts")
+  memories_memories_userIdToaccounts           memories[]      @relation("memories_userIdToaccounts")
+  participants                                 participants[]
+  relationships_relationships_userIdToaccounts relationships[] @relation("relationships_userIdToaccounts")
+  relationships_relationships_userAToaccounts  relationships[] @relation("relationships_userAToaccounts")
+  relationships_relationships_userBToaccounts  relationships[] @relation("relationships_userBToaccounts")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cache {
+  key       String
+  agentId   String
+  value     Json?     @default("{}")
+  createdAt DateTime? @default(now()) @db.Timestamp(6)
+  expiresAt DateTime? @db.Timestamp(6)
+
+  @@id([key, agentId])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model goals {
+  id          String    @id @db.Uuid
+  createdAt   DateTime? @default(now()) @db.Timestamptz(6)
+  userId      String?   @db.Uuid
+  name        String?
+  status      String?
+  description String?
+  roomId      String?   @db.Uuid
+  objectives  Json      @default("[]")
+  rooms       rooms?    @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_room")
+  accounts    accounts? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model logs {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime? @default(now()) @db.Timestamptz(6)
+  userId    String    @db.Uuid
+  body      Json
+  type      String
+  roomId    String    @db.Uuid
+  rooms     rooms     @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_room")
+  accounts  accounts  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model memories {
+  id                                  String                 @id @db.Uuid
+  type                                String
+  createdAt                           DateTime?              @default(now()) @db.Timestamptz(6)
+  content                             Json
+  userId                              String?                @db.Uuid
+  agentId                             String?                @db.Uuid
+  roomId                              String?                @db.Uuid
+  unique                              Boolean                @default(true)
+  embedding                           Unsupported("vector")?
+  WalletTransaction                   WalletTransaction?
+  accounts_memories_agentIdToaccounts accounts?              @relation("memories_agentIdToaccounts", fields: [agentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_agent")
+  rooms                               rooms?                 @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_room")
+  accounts_memories_userIdToaccounts  accounts?              @relation("memories_userIdToaccounts", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+
+  @@index([type, roomId], map: "idx_memories_type_room")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model participants {
+  id                String    @id @db.Uuid
+  createdAt         DateTime? @default(now()) @db.Timestamptz(6)
+  userId            String?   @db.Uuid
+  roomId            String?   @db.Uuid
+  userState         String?
+  last_message_read String?
+  rooms             rooms?    @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_room")
+  accounts          accounts? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+
+  @@unique([userId, roomId])
+  @@index([roomId], map: "idx_participants_room")
+  @@index([userId], map: "idx_participants_user")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model relationships {
+  id                                      String    @id @db.Uuid
+  createdAt                               DateTime? @default(now()) @db.Timestamptz(6)
+  userA                                   String    @db.Uuid
+  userB                                   String    @db.Uuid
+  status                                  String?
+  userId                                  String    @db.Uuid
+  accounts_relationships_userIdToaccounts accounts  @relation("relationships_userIdToaccounts", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+  accounts_relationships_userAToaccounts  accounts  @relation("relationships_userAToaccounts", fields: [userA], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_a")
+  accounts_relationships_userBToaccounts  accounts  @relation("relationships_userBToaccounts", fields: [userB], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_b")
+
+  @@index([userA, userB], map: "idx_relationships_users")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rooms {
+  id           String         @id @db.Uuid
+  createdAt    DateTime?      @default(now()) @db.Timestamptz(6)
+  goals        goals[]
+  logs         logs[]
+  memories     memories[]
+  participants participants[]
+}
