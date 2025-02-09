@@ -26,7 +26,10 @@ export const logInitialThought = async (runtime: IAgentRuntime) => {
         }
     );
 
-    await createMemory(runtime, initialThought);
+    await createMemory({
+        runtime,
+        message: initialThought,
+    });
 
     elizaLogger.log(`logInitialThought: ${initialThought}`);
 };

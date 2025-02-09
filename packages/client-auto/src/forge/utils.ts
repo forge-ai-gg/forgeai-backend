@@ -58,7 +58,15 @@ export const cleanResponseText = (text: string): string => {
     }
 };
 
-export const createMemory = async (runtime: IAgentRuntime, message: string) => {
+export const createMemory = async ({
+    runtime,
+    message,
+    additionalContent,
+}: {
+    runtime: IAgentRuntime;
+    message: string;
+    additionalContent?: { [key: string]: unknown };
+}) => {
     return await runtime.messageManager.createMemory({
         id: crypto.randomUUID(),
         userId: runtime.agentId,
@@ -66,6 +74,7 @@ export const createMemory = async (runtime: IAgentRuntime, message: string) => {
         roomId: undefined,
         content: {
             text: message,
+            ...additionalContent,
         },
         createdAt: Date.now(),
     });

@@ -24,7 +24,10 @@ export const logRandomThoughts = async (runtime: IAgentRuntime) => {
     });
 
     // generate a thought about what to do
-    await createMemory(runtime, randomThought.text);
+    await createMemory({
+        runtime,
+        message: randomThought.text,
+    });
 
     elizaLogger.log("logRandomThoughts: finished running");
 };
@@ -73,7 +76,7 @@ Respond with a single line of JSON in this exact format:
     }
 };
 
-const RANDOM_THOUGHT_PROMPT_VARIATIONS = [
+export const RANDOM_THOUGHT_PROMPT_VARIATIONS = [
     {
         instruction:
             "Channel your character's seasoned perspective on the current situation. Your response should blend tactical analysis with philosophical musing. Skip pleasantries - dive straight into your most pressing concern.",
@@ -126,7 +129,7 @@ const RANDOM_THOUGHT_PROMPT_VARIATIONS = [
     },
 ];
 
-const ACTIONS_PROMPTS = [
+export const ACTIONS_PROMPTS = [
     "Analyzing the market order flow, searching for patterns to exploit...",
     "Backtesting my trading strategies against historical data, refining my edge...",
     "Monitoring the on-chain activity of whales and institutions, anticipating their next moves...",

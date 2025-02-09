@@ -27,17 +27,21 @@ export const trendingTokenThought = async (runtime: IAgentRuntime) => {
     const overview = await getTokenOverview(runtime, randomToken.address);
 
     // generate a thought about what to do
-    await createMemory(
+    await createMemory({
         runtime,
-        await generateTrendingTokenThought(
+        message: await generateTrendingTokenThought(
             runtime,
             getRandomAction(randomToken, overview),
             {
                 token: randomToken,
                 overview,
             }
-        )
-    );
+        ),
+        additionalContent: {
+            token: randomToken,
+            overview,
+        },
+    });
 
     elizaLogger.log("logRandomThoughts: finished running");
 };

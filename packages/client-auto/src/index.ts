@@ -7,6 +7,7 @@ const AGENT_AUTO_CLIENT_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
 export class AutoClient {
     interval: NodeJS.Timeout | null = null;
     runtime: IAgentRuntime;
+    isIntervalEnabled = false;
 
     constructor(runtime: IAgentRuntime) {
         this.runtime = runtime;
@@ -20,17 +21,20 @@ export class AutoClient {
         // const staggerMs = Math.floor(Math.random() * 60 * 1000);
         const staggerMs = 0;
 
+        // run the first update
         update(this.runtime);
 
-        setTimeout(() => {
-            // start a loop that runs every hour
-            this.interval = setInterval(
-                async () => {
-                    await update(this.runtime);
-                },
-                60 * 1000 // 1 minute in milliseconds
-            );
-        }, staggerMs);
+        if (this.isIntervalEnabled) {
+            setTimeout(() => {
+                // start a loop that runs every hour
+                this.interval = setInterval(
+                    async () => {
+                        await update(this.runtime);
+                    },
+                    60 * 1000 // 1 minute in milliseconds
+                );
+            }, staggerMs);
+        }
     }
 
     stop() {
