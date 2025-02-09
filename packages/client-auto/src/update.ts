@@ -1,4 +1,6 @@
-import { IAgentRuntime, elizaLogger } from "@elizaos/core";
+import { elizaLogger, IAgentRuntime } from "@elizaos/core";
+import bs58 from "bs58";
+import { SolanaAgentKit } from "solana-agent-kit";
 import { sma } from "technicalindicators";
 import { APOLLO_WALLET_ADDRESS } from "./forge/constants";
 import {
@@ -6,21 +8,45 @@ import {
     generateRandomThought,
 } from "./forge/random-thoughts";
 import { createMemory } from "./forge/utils";
+import { decrypt } from "./lib/aws-kms";
 import { fetchPriceHistory, fetchWalletPortfolio } from "./lib/birdeye";
 import { prisma } from "./lib/prisma";
 
-export const update = async (runtime: IAgentRuntime) => {
-    elizaLogger.info("UPDATE CYCLE STARTING...");
+export async function update(runtime: IAgentRuntime, cycle: number) {
+    elizaLogger.info(
+        `Running auto update cycle #${cycle} for ${runtime.character.name} (${runtime.agentId})`
+    );
+
+    // get keys
+    const privateKeyBase64 = await decrypt(
+        runtime.character.settings.secrets.SOLANA_PRIVATE_KEY
+    );
+
+    // Convert base64 to Uint8Array then to base58
+    const privateKeyBytes = Buffer.from(privateKeyBase64, "base64");
+    const privateKey = bs58.encode(privateKeyBytes);
+
+    const publicKey =
+        runtime.character.settings.secrets.SOLANA_WALLET_PUBLIC_KEY;
 
     const agentId = runtime.character.id;
     elizaLogger.info("AGENT ID: ", agentId);
 
-    // get keys
-    const privateKey = runtime.character.settings.secrets.SOLANA_PRIVATE_KEY;
-    const publicKey =
-        runtime.character.settings.secrets.SOLANA_WALLET_PUBLIC_KEY;
+    elizaLogger.info("PK:", privateKey);
 
-    // get trading strategy assignments
+    // Initialize with private key and optional RPC URL
+    const agent = new SolanaAgentKit(
+        privateKey,
+        process.env.SOLANA_RPC_URL,
+        process.env.OPENAI_API_KEY
+    );
+
+    elizaLogger.info("AGENT KIT ONLINE: ", agent.wallet_address);
+
+    // Create LangChain tools
+    // const tools = createSolanaTools(agent);
+
+    // get trading stra I hear a timer 10 more minutes 10 more minutes OKtegy assignments
     const tradingStrategyAssignments =
         await prisma.agentStrategyAssignment.findMany({
             where: {
@@ -37,23 +63,20 @@ export const update = async (runtime: IAgentRuntime) => {
 
     // get portolio balance
     const portfolio = await fetchWalletPortfolio(publicKey);
-    elizaLogger.info("PORTFOLIO: ", portfolio);
+    elizaLogger.info("PORTFOLIO SUCCESS: ", portfolio.success);
 
     // check out SOL balance
     const solBalance = portfolio.data.items.find(
         (asset) => asset.symbol === "SOL"
     );
-    elizaLogger.info("SOL BALANCE: ", solBalance);
+    elizaLogger.info("SOL BALANCE: ", solBalance.valueUsd);
 
     const { priceHistoryResponse, dataUrl } = await fetchPriceHistory({
         tokenAddress: "So11111111111111111111111111111111111111112",
         addressType: "token",
         period: "1H",
     });
-    elizaLogger.info(
-        "PRICE HISTORY: ",
-        priceHistoryResponse.data.items.slice(0, 3)
-    );
+    elizaLogger.info("PRICE HISTORY: ", priceHistoryResponse.data.items.length);
 
     // get sma
     const period = 10;
@@ -84,4 +107,4 @@ export const update = async (runtime: IAgentRuntime) => {
             dataUrl,
         },
     });
-};
+}

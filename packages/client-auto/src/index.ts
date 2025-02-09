@@ -1,45 +1,59 @@
-import { type Client, type IAgentRuntime, elizaLogger } from "@elizaos/core";
+import { type Client, elizaLogger } from "@elizaos/core";
+import { EnumUpdateInterval } from "./lib/enums";
+import { intervalMs } from "./lib/timing";
+import { IAgentRuntimeExtended } from "./types/eliza";
 import { update } from "./update";
 
-// todo - add a config for this
-const AGENT_AUTO_CLIENT_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+const DEFAULT_UPDATE_INTERVAL = EnumUpdateInterval.MINUTE;
 
 export class AutoClient {
     interval: NodeJS.Timeout | null = null;
-    runtime: IAgentRuntime;
-    isIntervalEnabled = false;
+    runtime: IAgentRuntimeExtended;
+    isIntervalEnabled = true;
+    updateCycle = 0;
+    isStopped = false;
 
-    constructor(runtime: IAgentRuntime) {
+    constructor(runtime: IAgentRuntimeExtended) {
         this.runtime = runtime;
-        // this.runtime.clients["auto"] = this;
+        const updateInterval =
+            this.runtime.character.settings.updateInterval ||
+            DEFAULT_UPDATE_INTERVAL;
 
         elizaLogger.info(
             `AGENT: ${this.runtime.character.name} (${this.runtime.agentId}) starting auto client.....`
         );
 
-        // Random stagger between 1-60 seconds
-        // const staggerMs = Math.floor(Math.random() * 60 * 1000);
-        const staggerMs = 0;
+        // Start the update cycle
+        this.updateCycle++;
+        this.runUpdate(updateInterval);
+    }
 
-        // run the first update
-        update(this.runtime);
+    private async runUpdate(updateInterval: EnumUpdateInterval) {
+        if (this.isStopped) return;
 
-        if (this.isIntervalEnabled) {
+        await update(this.runtime, this.updateCycle);
+
+        if (this.isStopped) return;
+
+        if (updateInterval === EnumUpdateInterval.CONTINUOUS) {
+            // Schedule next update immediately but allow event loop to clear
             setTimeout(() => {
-                // start a loop that runs every hour
-                this.interval = setInterval(
-                    async () => {
-                        await update(this.runtime);
-                    },
-                    60 * 1000 // 1 minute in milliseconds
-                );
-            }, staggerMs);
+                this.updateCycle++;
+                this.runUpdate(updateInterval);
+            }, 0);
+        } else if (this.isIntervalEnabled) {
+            // Schedule next update based on interval
+            this.interval = setTimeout(() => {
+                this.updateCycle++;
+                this.runUpdate(updateInterval);
+            }, intervalMs(updateInterval));
         }
     }
 
     stop() {
+        this.isStopped = true;
         if (this.interval) {
-            clearInterval(this.interval);
+            clearTimeout(this.interval);
             this.interval = null;
             elizaLogger.log(
                 `character ${this.runtime.character.name.toUpperCase()} stopping auto client...`
@@ -49,13 +63,13 @@ export class AutoClient {
 }
 
 export const AutoClientInterface: Client = {
-    start: async (runtime: IAgentRuntime) => {
+    start: async (runtime: IAgentRuntimeExtended) => {
         elizaLogger.info("STARTING AUTO CLIENT", runtime.agentId);
         const client = new AutoClient(runtime);
         elizaLogger.info("Auto Client started");
         return client;
     },
-    stop: async (runtime: IAgentRuntime) => {
+    stop: async (runtime: IAgentRuntimeExtended) => {
         console.warn("Auto client does not support stopping yet");
     },
 };
