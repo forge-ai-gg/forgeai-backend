@@ -1,14 +1,6 @@
 import { IAgentRuntime, elizaLogger } from "@elizaos/core";
-import {
-    getMetadata,
-    getTokenOverview,
-    getTokenSecurity,
-    getTokenTradeData,
-    getWalletPortfolio,
-} from "./apollo/birdeye-api";
+import { getWalletPortfolio } from "./apollo/birdeye-api";
 import { APOLLO_WALLET_ADDRESS } from "./apollo/constants";
-import { generateRandomThought } from "./apollo/random-thoughts";
-import { createMemory } from "./utils";
 
 export const updateAllPositionsAndStrategies = async (
     runtime: IAgentRuntime
@@ -34,64 +26,68 @@ export const updateAllPositionsAndStrategies = async (
     for (let i = 0; i < portfolio.data.items.length; i++) {
         const item = portfolio.data.items[i];
         // generate a thought about this token
-        await createMemory(
-            runtime,
-            await generateRandomThought(
-                runtime,
-                `Ok, i need to look at the token: ${item.symbol} - ${item.name} in my portfolio. This is my ${i + 1}th largest holding in this wallet. I need to look at the market data for this token, check trending tokens, check influencer tweets & sentiment, check news, check banter bubbles, check google trends, check reddit trends, check twitter trends, get technical analysis data for this token`,
-                {
-                    token: item,
-                }
-            )
-        );
-        // get the token overview and generate a thought about it
-        const overview = await getTokenOverview(runtime, item.address);
-        await createMemory(
-            runtime,
-            await generateRandomThought(
-                runtime,
-                `Ok, I need to analyze the data in this token overview and determine if this token is a good buy, sell, or hold.`,
-                {
-                    overview,
-                }
-            )
-        );
-        // get the token metadata and generate a thought about it
-        const metadata = await getMetadata(runtime, item.address);
-        await createMemory(
-            runtime,
-            await generateRandomThought(
-                runtime,
-                `Read and understand the metadata associated with this token to determine if this token is a good buy, sell, or hold.`,
-                {
-                    metadata,
-                }
-            )
-        );
-        // get the security data for this token
-        const security = await getTokenSecurity(runtime, item.address);
-        await createMemory(
-            runtime,
-            await generateRandomThought(
-                runtime,
-                `Read and understand the security data associated with this token to determine if this token is a good buy, sell, or hold.`,
-                {
-                    security,
-                }
-            )
-        );
-        // get the trade data for this token
-        const tradeData = await getTokenTradeData(runtime, item.address);
-        await createMemory(
-            runtime,
-            await generateRandomThought(
-                runtime,
-                `Read and understand the trade data associated with this token to determine if this token is a good buy, sell, or hold.`,
-                {
-                    tradeData,
-                }
-            )
-        );
+        // await createMemory(
+        //     runtime,
+        //     await generateRandomThought({
+        //         runtime,
+        //         action: `Ok, i need to look at the token: ${item.symbol} - ${
+        //             item.name
+        //         } in my portfolio. This is my ${
+        //             i + 1
+        //         }th largest holding in this wallet. I need to look at the market data for this token, check trending tokens, check influencer tweets & sentiment, check news, check banter bubbles, check google trends, check reddit trends, check twitter trends, get technical analysis data for this token`,
+        //         details: {
+        //             token: item,
+        //         },
+        //     })
+        // );
+        // // get the token overview and generate a thought about it
+        // const overview = await getTokenOverview(runtime, item.address);
+        // await createMemory(
+        //     runtime,
+        //     await generateRandomThought({
+        //         runtime,
+        //         action: `Ok, I need to analyze the data in this token overview and determine if this token is a good buy, sell, or hold.`,
+        //         details: {
+        //             overview,
+        //         },
+        //     })
+        // );
+        // // get the token metadata and generate a thought about it
+        // const metadata = await getMetadata(runtime, item.address);
+        // await createMemory(
+        //     runtime,
+        //     await generateRandomThought({
+        //         runtime,
+        //         action: `Read and understand the metadata associated with this token to determine if this token is a good buy, sell, or hold.`,
+        //         details: {
+        //             metadata,
+        //         },
+        //     })
+        // );
+        // // get the security data for this token
+        // const security = await getTokenSecurity(runtime, item.address);
+        // await createMemory(
+        //     runtime,
+        //     await generateRandomThought({
+        //         runtime,
+        //         action: `Read and understand the security data associated with this token to determine if this token is a good buy, sell, or hold.`,
+        //         details: {
+        //             security,
+        //         },
+        //     })
+        // );
+        // // get the trade data for this token
+        // const tradeData = await getTokenTradeData(runtime, item.address);
+        // await createMemory(
+        //     runtime,
+        //     await generateRandomThought({
+        //         runtime,
+        //         action: `Read and understand the trade data associated with this token to determine if this token is a good buy, sell, or hold.`,
+        //         details: {
+        //             tradeData,
+        //         },
+        //     })
+        // );
 
         // summarize the recent memories related to this token and determine if its time to buy, sell, or hold
         // TODO - get the influencer tweets & sentiment for this token

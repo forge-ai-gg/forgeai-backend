@@ -118,16 +118,49 @@ export function createApiRouter(
         const { agentId } = validateUUIDParams(req.params, res) ?? {
             agentId: null,
         };
+
+        elizaLogger.log(`STOP AGENT: (${agentId}) stopping...`);
+
         if (!agentId) return;
 
         const agent: AgentRuntime = agents.get(agentId);
 
         if (agent) {
-            elizaLogger.log(`STOP AGENT: ${agent.character.name} stopped`);
-            agent.stop();
-            directClient.unregisterAgent(agent);
+            elizaLogger.log(
+                `STOP AGENT: ${agent.character.name} (${agentId}) stopping...`
+            );
+            try {
+                elizaLogger.debug(`Attempting to stop agent ${agentId}...`);
+                await agent.stop();
+                elizaLogger.debug(`Successfully stopped agent ${agentId}`);
+            } catch (error) {
+                elizaLogger.error(
+                    `Error stopping agent ${agentId}: ${error.message}`
+                );
+                elizaLogger.error(`Error stack: ${error.stack}`);
+                // Continue with cleanup even if stop fails
+            }
+
+            try {
+                elizaLogger.debug(
+                    `Attempting to unregister agent ${agentId}...`
+                );
+                await directClient.unregisterAgent(agent);
+                elizaLogger.debug(`Successfully unregistered agent ${agentId}`);
+            } catch (error) {
+                elizaLogger.error(
+                    `Error unregistering agent ${agentId}: ${error.message}`
+                );
+                elizaLogger.error(`Error stack: ${error.stack}`);
+                // Continue with response even if unregister fails
+            }
+
+            elizaLogger.log(
+                `STOP AGENT: ${agent.character.name} (${agentId}) stopped successfully`
+            );
             res.status(204).json({ success: true });
         } else {
+            elizaLogger.warn(`Agent not found: ${agentId}`);
             res.status(404).json({ error: "Agent not found" });
         }
     });
@@ -138,13 +171,15 @@ export function createApiRouter(
         };
         if (!agentId) return;
 
+        elizaLogger.log(`SET AGENT: (${agentId}) setting...`);
+
         let agent: AgentRuntime = agents.get(agentId);
 
         // update character
         if (agent) {
             // stop agent
-            agent.stop();
-            directClient.unregisterAgent(agent);
+            await agent.stop();
+            await directClient.unregisterAgent(agent);
             // if it has a different name, the agentId will change
         }
 
@@ -153,6 +188,10 @@ export function createApiRouter(
 
         // load character from body
         const character = req.body;
+
+        elizaLogger.log(`SET AGENT: ${character.name} (${agentId}) setting...`);
+        elizaLogger.log(JSON.stringify(character, null, 2));
+
         try {
             validateCharacterConfig(character);
         } catch (e) {

@@ -33,19 +33,21 @@ export async function getKmsKeyRotationStatus() {
 }
 
 export async function encrypt(data: string) {
+    console.log("[KMS Encrypt] Starting encryption");
     const dataKeyResponse = await kmsClient.send(
         new GenerateDataKeyCommand({
             KeyId: process.env.AWS_KMS_KEY_ID,
             KeySpec: "AES_256",
         })
     );
+    console.log("[KMS Encrypt] Generated data key");
 
-    // Generate a random IV instead of fixed zeros
     const iv = Buffer.alloc(16);
     crypto.randomFillSync(iv);
+    console.log("[KMS Encrypt] Generated IV");
 
     const cipher = createCipheriv(
-        "aes-256-cbc", // Changed to CBC mode which is better for large data
+        "aes-256-cbc",
         dataKeyResponse.Plaintext as Buffer,
         iv
     );
@@ -54,42 +56,62 @@ export async function encrypt(data: string) {
         cipher.update(Buffer.from(data)),
         cipher.final(),
     ]);
+    console.log("[KMS Encrypt] Data encrypted, length:", encrypted.length);
 
-    // Combine encrypted data key, IV, and encrypted content
     const encryptedDataKey = dataKeyResponse.CiphertextBlob as Buffer;
-    return Buffer.concat([
-        Buffer.from([encryptedDataKey.length]), // 1 byte for length
+    const result = Buffer.concat([
+        Buffer.from([encryptedDataKey.length]),
         encryptedDataKey,
         iv,
         encrypted,
     ]).toString("base64");
+
+    console.log("[KMS Encrypt] Completed", {
+        encryptedDataKeyLength: encryptedDataKey.length,
+        ivLength: iv.length,
+        encryptedDataLength: encrypted.length,
+        totalLength: result.length,
+    });
+
+    return result;
 }
 
 export async function decrypt(encryptedData: string) {
+    console.log("[KMS Decrypt] Starting decryption");
     const buffer = Buffer.from(encryptedData, "base64");
+    console.log("[KMS Decrypt] Input length:", buffer.length);
 
-    // Read the encrypted data key length from first byte
     const dataKeyLength = buffer[0];
+    console.log("[KMS Decrypt] Data key length:", dataKeyLength);
 
-    // Extract the parts
     const encryptedDataKey = buffer.subarray(1, dataKeyLength + 1);
     const iv = buffer.subarray(dataKeyLength + 1, dataKeyLength + 17);
     const encrypted = buffer.subarray(dataKeyLength + 17);
+
+    console.log("[KMS Decrypt] Parsed components", {
+        encryptedDataKeyLength: encryptedDataKey.length,
+        ivLength: iv.length,
+        encryptedDataLength: encrypted.length,
+    });
 
     const dataKeyResponse = await kmsClient.send(
         new DecryptCommand({
             CiphertextBlob: encryptedDataKey,
         })
     );
+    console.log("[KMS Decrypt] Decrypted data key");
 
     const decipher = createDecipheriv(
-        "aes-256-cbc", // Changed to CBC mode
+        "aes-256-cbc",
         dataKeyResponse.Plaintext as Buffer,
         iv
     );
 
-    return Buffer.concat([
+    const result = Buffer.concat([
         decipher.update(encrypted),
         decipher.final(),
     ]).toString();
+
+    console.log("[KMS Decrypt] Completed, decrypted length:", result.length);
+    return result;
 }

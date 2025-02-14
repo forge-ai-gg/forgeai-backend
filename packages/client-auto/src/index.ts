@@ -64,9 +64,7 @@ export class AutoClient {
 
 export const AutoClientInterface: Client = {
     start: async (runtime: IAgentRuntimeExtended) => {
-        elizaLogger.info("STARTING AUTO CLIENT", runtime.agentId);
         const client = new AutoClient(runtime);
-        elizaLogger.info("Auto Client started");
         return client;
     },
     stop: async (runtime: IAgentRuntimeExtended) => {

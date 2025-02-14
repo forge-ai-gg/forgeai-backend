@@ -11,20 +11,20 @@ export const logInitialThought = async (runtime: IAgentRuntime) => {
         `Agent ${runtime.character.name} (${runtime.agentId}) generating initial thought...`
     );
 
-    const initialThought = await generateInitialThought(
+    const initialThought = await generateInitialThought({
         runtime,
-        INITIALIZATION_ACTIONS[
+        action: INITIALIZATION_ACTIONS[
             Math.floor(Math.random() * INITIALIZATION_ACTIONS.length)
         ],
-        {
+        details: {
             marketState:
                 MARKET_CONTEXTS[
                     Math.floor(Math.random() * MARKET_CONTEXTS.length)
                 ],
             tradingMode:
                 TRADING_MODES[Math.floor(Math.random() * TRADING_MODES.length)],
-        }
-    );
+        },
+    });
 
     await createMemory({
         runtime,
@@ -34,11 +34,15 @@ export const logInitialThought = async (runtime: IAgentRuntime) => {
     elizaLogger.log(`logInitialThought: ${initialThought}`);
 };
 
-export const generateInitialThought = async (
-    runtime: IAgentRuntime,
-    action: string,
-    details?: any
-): Promise<string> => {
+export const generateInitialThought = async ({
+    runtime,
+    action,
+    details,
+}: {
+    runtime: IAgentRuntime;
+    action: string;
+    details?: any;
+}): Promise<string> => {
     const prompt =
         INITIAL_THOUGHT_PROMPT_VARIATIONS[
             Math.floor(Math.random() * INITIAL_THOUGHT_PROMPT_VARIATIONS.length)

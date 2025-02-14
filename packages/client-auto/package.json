@@ -38,7 +38,7 @@
 		"build": "tsup --format esm --dts",
 		"dev": "tsup --format esm --dts --watch",
 		"prisma:generate": "prisma generate --no-hints",
-		"prisma:pull": "npx prisma db pull"
+		"prisma:pull": "npx prisma db pull && pnpm prisma:generate"
 	},
 	"peerDependencies": {
 		"whatwg-url": "7.1.0"

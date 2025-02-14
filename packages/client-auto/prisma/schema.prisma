@@ -86,6 +86,7 @@ model AgentStrategyAssignment {
   updatedById                                    String               @default("00000000-0000-0000-0000-000000000000")
   id                                             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   config                                         Json?                @default("{}")
+  isPaperTrading                                 Boolean              @default(false)
   Agent                                          Agent                @relation(fields: [agentId], references: [id], onDelete: Cascade)
   User_AgentStrategyAssignment_createdByIdToUser User                 @relation("AgentStrategyAssignment_createdByIdToUser", fields: [createdById], references: [id])
   AgentTradingStrategy                           AgentTradingStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)

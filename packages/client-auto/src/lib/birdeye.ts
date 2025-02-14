@@ -1,4 +1,5 @@
 import { elizaLogger } from "@elizaos/core";
+import { TimeInterval } from "../types/birdeye/api/common";
 import { DefiHistoryPriceResponse } from "../types/birdeye/api/defi";
 import { WalletPortfolioResponse } from "../types/birdeye/api/wallet";
 export const BIRDEYE_BASE_URL = "https://public-api.birdeye.so";
@@ -36,22 +37,7 @@ export async function fetchPriceHistory({
 }: {
     tokenAddress: string;
     addressType: "token" | "pair";
-    period:
-        | "1m"
-        | "3m"
-        | "5m"
-        | "15m"
-        | "30m"
-        | "1H"
-        | "2H"
-        | "4H"
-        | "6H"
-        | "8H"
-        | "12H"
-        | "1D"
-        | "3D"
-        | "1W"
-        | "1M";
+    period: TimeInterval;
     timeFrom?: number;
     timeTo?: number;
 }) {

@@ -10,13 +10,15 @@ import { cleanResponseText, createMemory } from "./utils";
 export const logRandomThoughts = async (runtime: IAgentRuntime) => {
     elizaLogger.log("Running logRandomThoughts client...");
 
-    const randomThought = await generateRandomThought(
+    const randomThought = await generateRandomThought({
         runtime,
-        ACTIONS_PROMPTS[Math.floor(Math.random() * ACTIONS_PROMPTS.length)],
-        {
+        action: ACTIONS_PROMPTS[
+            Math.floor(Math.random() * ACTIONS_PROMPTS.length)
+        ],
+        details: {
             walletAddress: APOLLO_WALLET_ADDRESS,
-        }
-    );
+        },
+    });
 
     elizaLogger.info("randomThought:", {
         text: randomThought.text,
@@ -32,11 +34,18 @@ export const logRandomThoughts = async (runtime: IAgentRuntime) => {
     elizaLogger.log("logRandomThoughts: finished running");
 };
 
-export const generateRandomThought = async (
-    runtime: IAgentRuntime,
-    action: string,
-    details?: any
-): Promise<{ text: string; tokenUsage: { input: number; output: number } }> => {
+export const generateRandomThought = async ({
+    runtime,
+    action,
+    details,
+}: {
+    runtime: IAgentRuntime;
+    action: string;
+    details?: any;
+}): Promise<{
+    text: string;
+    tokenUsage: { input: number; output: number };
+}> => {
     const prompt =
         RANDOM_THOUGHT_PROMPT_VARIATIONS[
             Math.floor(Math.random() * RANDOM_THOUGHT_PROMPT_VARIATIONS.length)
@@ -50,7 +59,7 @@ ${prompt.instruction}
 Style guidelines:
 ${prompt.style}
 
-IMPORTANT: Your response must be valid JSON. Do not include any newlines or special characters in the text field.
+IMPORTANT: Your response must be valid JSON. Do not include any newlines or special characters in the text field. Feel free to reference the details provided above if you so choose. 
 Respond with a single line of JSON in this exact format:
 {"text": "your single-line response here"}`;
 
