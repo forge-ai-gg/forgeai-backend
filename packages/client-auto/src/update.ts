@@ -10,13 +10,14 @@ import {
 } from "./forge/random-thoughts";
 import { createMemory } from "./forge/utils";
 import { fetchPriceHistory, fetchWalletPortfolio } from "./lib/birdeye";
-import { tokenAddresses } from "./lib/constants";
-import { EnumTradeStatus, EnumTradeType } from "./lib/enums";
+import { EnumMemoryType, EnumTradeStatus, EnumTradeType } from "./lib/enums";
 import { getCharacterDetails } from "./lib/get-character-details";
 import { prisma } from "./lib/prisma";
 import { calculateProximityToThreshold } from "./lib/rsi-utils";
 import { TimeInterval } from "./types/birdeye/api/common";
 import { TradingStrategyConfig } from "./types/trading-strategy-config";
+
+const FORCE_TRADE = true;
 
 export async function update(runtime: IAgentRuntime, cycle: number) {
     const connection = new Connection(process.env.SOLANA_RPC_URL);
@@ -48,8 +49,9 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
 
     // get data required for the trading strategy
     // todo - support multiple tokens
+    // todo - support for both parts of the trading pair
     const { priceHistoryResponse, dataUrl } = await fetchPriceHistory({
-        tokenAddress: tradingStrategyConfig.tokens[0].address,
+        tokenAddress: tradingStrategyConfig.tradingPairs[0].to.address,
         addressType: "token",
         period: tradingStrategyConfig.timeInterval as TimeInterval,
         timeFrom: Math.floor(
@@ -103,9 +105,10 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
         currentRsi > tradingStrategyConfig.rsiConfig.overBought &&
         existingOpenPosition;
 
-    // get the available amount in portfolio
+    // get the available amount in portfolio of the from token
     const availableAmountInPortfolio = portfolio.data.items.find(
-        (item) => item.address === tradingStrategyConfig.tokens[0].address
+        (item) =>
+            item.address === tradingStrategyConfig.tradingPairs[0].from.address
     )?.uiAmount;
 
     // calculate the amount to trade
@@ -114,10 +117,11 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
             tradingStrategyConfig.maxPortfolioAllocation) /
         100;
 
-    // execute the trading strategy
-    // if i should buy, then we swap from USDC to the token
-    // if i should sell, then we swap from the token to USDC
-    if ((shouldBuy || shouldSell) && availableAmountInPortfolio > 0) {
+    // execute the trading strategy if the conditions are met or if FORCE_TRADE is true
+    if (
+        ((shouldBuy || shouldSell) && availableAmountInPortfolio > 0) ||
+        FORCE_TRADE
+    ) {
         try {
             elizaLogger.info("TRADING CONDITIONS ARE MET!");
 
@@ -126,25 +130,23 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
                 availableAmountInPortfolio
             );
 
-            const tokenFromAddress = shouldBuy
-                ? tokenAddresses.USDC
-                : tradingStrategyConfig.tokens[0].address;
-            const tokenToAddress = shouldBuy
-                ? tradingStrategyConfig.tokens[0].address
-                : tokenAddresses.USDC;
+            const tokenFrom =
+                tradingStrategyConfig.tradingPairs[0][
+                    shouldBuy ? "from" : "to"
+                ];
+            const tokenTo =
+                tradingStrategyConfig.tradingPairs[0][
+                    shouldBuy ? "to" : "from"
+                ];
 
-            const tokenFromSymbol = shouldBuy
-                ? "USDC"
-                : tradingStrategyConfig.tokens[0].symbol;
-            const tokenToSymbol = shouldBuy
-                ? tradingStrategyConfig.tokens[0].symbol
-                : "USDC";
-
-            const tx = await solanaAgent.trade(
-                new PublicKey(tokenFromAddress),
-                amountToTrade,
-                new PublicKey(tokenToAddress)
-            );
+            // if not paper trading, then execute the trade
+            const tx = !tradingStrategyAssignment.isPaperTrading
+                ? await solanaAgent.trade(
+                      new PublicKey(tokenFrom.address),
+                      amountToTrade,
+                      new PublicKey(tokenTo.address)
+                  )
+                : "0000000000000000000000000000000000000000000000000000000000000000";
             elizaLogger.info("TX: ", tx);
 
             // todo - Get tx details using web3.js
@@ -155,41 +157,32 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
             const tradingThought = await generateTradingThought({
                 runtime,
                 action: `Swapping ${amountToTrade} ${
-                    shouldBuy ? "USDC" : tradingStrategyConfig.tokens[0].symbol
-                } to ${
-                    shouldBuy ? tradingStrategyConfig.tokens[0].symbol : "USDC"
-                }`,
+                    shouldBuy ? tokenFrom.symbol : tokenTo.symbol
+                } to ${shouldBuy ? tokenTo.symbol : tokenFrom.symbol}`,
                 details: {
                     walletAddress: APOLLO_WALLET_ADDRESS,
                 },
             });
 
-            // create the memory for the agent
-            await createMemory({
-                runtime,
-                message: tradingThought.text,
-                additionalContent: {
-                    dataUrl,
-                    currentRsi,
-                    overBought: tradingStrategyConfig.rsiConfig.overBought,
-                    overSold: tradingStrategyConfig.rsiConfig.overSold,
-                    proximityToThreshold,
-                    tx,
-                },
+            elizaLogger.info("TRADING THOUGHT:", {
+                text: tradingThought.text,
+                tokenUsage: tradingThought.tokenUsage,
             });
 
-            await prisma.tradeHistory.create({
+            const tradeHistory = await prisma.tradeHistory.create({
                 data: {
                     side: shouldBuy ? "BUY" : "SELL",
                     timestamp: new Date(),
-                    tokenFromAddress,
-                    tokenToAddress,
-                    tokenFromSymbol,
-                    tokenToSymbol,
+                    tokenFromAddress: tokenFrom.address,
+                    tokenToAddress: tokenTo.address,
+                    tokenFromSymbol: tokenFrom.symbol,
+                    tokenToSymbol: tokenTo.symbol,
                     tokenFromAmount: amountToTrade.toString(),
-                    tokenToAmount: "0", // todo - add the amount of tokens received
-                    tokenFromDecimals: 6,
-                    tokenToDecimals: 6,
+                    tokenToAmount: "222.2", // todo - add the amount of tokens received
+                    tokenFromDecimals: tokenFrom.decimals,
+                    tokenToDecimals: tokenTo.decimals,
+                    tokenFromLogoURI: tokenFrom.logoURI,
+                    tokenToLogoURI: tokenTo.logoURI,
                     entryPrice: 0, // todo - add the entry price
                     feesInUsd: 0, // todo - add the fees in USD
                     status: EnumTradeStatus.OPEN,
@@ -197,8 +190,8 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                     exitPrice: 0, // todo - add the exit price
-                    profitLossUsd: 0, // todo - add the profit/loss
-                    profitLossPercentage: 0, // todo - add the profit/loss percentage
+                    profitLossUsd: Math.random() * 100, // todo - add the profit/loss
+                    profitLossPercentage: Math.random() * 100, // todo - add the profit/loss percentage
                     transactionHash: tx,
                     failureReason: null,
                     metadata: {},
@@ -207,6 +200,23 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
                     },
                 },
             });
+
+            // create the memory for the agent
+            const memory = await createMemory({
+                runtime,
+                message: tradingThought.text,
+                additionalContent: {
+                    type: EnumMemoryType.TRADE,
+                    dataUrl,
+                    currentRsi,
+                    overBought: tradingStrategyConfig.rsiConfig.overBought,
+                    overSold: tradingStrategyConfig.rsiConfig.overSold,
+                    proximityToThreshold,
+                    tx,
+                    tradeHistory,
+                },
+            });
+            elizaLogger.info("MEMORY:", memory);
 
             // log the trade
             elizaLogger.info("TRADING THOUGHT:", {

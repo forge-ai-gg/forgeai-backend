@@ -893,6 +893,8 @@ model TradeHistory {
   updatedAt                           DateTime                @default(now())
   createdById                         String                  @default("00000000-0000-0000-0000-000000000000")
   updatedById                         String                  @default("00000000-0000-0000-0000-000000000000")
+  tokenFromLogoURI                    String?
+  tokenToLogoURI                      String?
   User_TradeHistory_createdByIdToUser User                    @relation("TradeHistory_createdByIdToUser", fields: [createdById], references: [id])
   AgentStrategyAssignment             AgentStrategyAssignment @relation(fields: [strategyAssignmentId], references: [id], onDelete: Cascade)
   User_TradeHistory_updatedByIdToUser User                    @relation("TradeHistory_updatedByIdToUser", fields: [updatedById], references: [id])

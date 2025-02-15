@@ -14,3 +14,7 @@ export enum EnumTradeType {
     BUY = "buy",
     SELL = "sell",
 }
+
+export enum EnumMemoryType {
+    TRADE = "trade",
+}
