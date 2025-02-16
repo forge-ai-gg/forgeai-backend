@@ -1,0 +1,157 @@
+---
+description: Creating functionality in the trading execution steps of the agents auto client workflow
+globs: packages/client-auto/*
+---
+# Solana Trade Execution Framework Rules
+
+## Core Workflow
+
+### 1. Initialization (Every 1 Minute)
+- Load agent configuration and trading strategy assignments
+- Initialize Solana RPC connection with fallbacks
+- Load cached data from previous cycles (should be handled by eliza cache handler)
+- Validate wallet and API keys
+
+### 2. Data Collection
+- Fetch current market prices (1-minute cache) using birdeye data
+- Get token metadata and liquidity data for the tokens specified by the trading strategy config
+- Calculate technical indicators based off the 'technical-indicators' npm library
+- Update portfolio positions information using birdeye data
+- Fetch trust scores and security metrics (using birdeye data) (future)
+
+### 3. Portfolio Analysis
+- Track all open positions
+- Monitor position performance - (realtime pnl for open positions)
+- Calculate portfolio metrics
+- Assess risk exposure (future)
+- Check position limits
+ 
+### 4. Strategy Evaluation
+- Evaluate trading signals
+- Calculate position sizes
+- Check risk parameters (future)
+- Generate trade recommendations
+- Validate against portfolio limits
+
+### 5. Trade Execution
+- Perform preflight checks
+- Get Jupiter DEX quote 
+- Validate slippage and impact
+- Simulate transaction
+- Execute and confirm transaction
+
+## Safety Parameters
+
+### 1. Trading Limits
+- Minimum trade: 0.001 SOL
+- Maximum position size: 10% of token liquidity
+- Maximum slippage: 3%
+- Minimum liquidity: $1000
+- Minimum 24h volume: $2000 
+- Minimum trust score: 0.4 (future)
+- Stop loss: 20% (future)
+- Take profit: 12% (future)
+- Trailing stop: 20% (future)
+- Maximum active positions: 5 (future)
+
+### 2. Error Handling
+- Maximum retries: 3
+- Backoff base: 1000ms
+- Circuit breaker threshold: 5 failures
+- Recovery actions for common errors:
+  - Insufficient funds: Abort
+  - High slippage: Retry
+  - RPC error: Switch endpoint
+  - Transaction error: Analyze and retry
+
+## Performance Optimization
+
+### 1. Caching Strategy
+- Price data: 5-minute cache
+- Technical indicators: 5-minute cache
+- Portfolio data: 1-minute cache
+- Token metadata: 1-hour cache
+
+### 2. Batch Operations
+- Batch all token approvals  (future)
+- Batch price updates (future)
+- Combine similar trades (future)
+- Bulk position updates (future)
+
+### 3. RPC Optimization
+- Connection pooling (future)
+- Request batching (future)
+- Fallback endpoints (future)
+- Rate limiting (future)
+
+## Monitoring
+
+### 1. Health Checks
+- API connectivity status
+- Balance reconciliation
+- Order execution latency
+- Strategy performance metrics
+- Memory usage monitoring
+- RPC connection health
+
+### 2. Alerts
+- Execution failures
+- Slippage exceeding thresholds
+- Unusual price movements
+- Position limit breaches
+- RPC connection issues
+- Memory usage warnings
+
+## Documentation Requirements
+
+### 1. Trade Logging
+- all trades should be logged using the TradeHistory table and should be tied to a strategy
+- data should include token swap detials including feeds and price impact
+- Entry/exit reasons
+- Performance metrics
+- Transaction hash/signatures
+- Slippage details
+
+## Integration Points
+
+### 1. Required Services
+- Jupiter DEX aggregator
+- Birdeye price feeds
+- Trust score provider
+- Technical analysis engine
+- Portfolio management system
+- RPC node provider
+
+### 2. Optional/Future Services
+- Social sentiment analysis
+- News feed integration
+- Whale wallet tracking
+- Market depth analysis
+- MEV protection
+- Gas optimization
+
+## Testing Requirements
+
+### 1. Unit Tests
+- Trade execution logic
+- Position management
+- Risk calculations
+- Error handling
+- Strategy evaluation
+- Price impact calculation
+
+### 2. Integration Tests
+- RPC connectivity
+- DEX integration
+- Position tracking
+- Memory management
+- Cache functionality
+- Error recovery
+
+### 3. Performance Tests
+- High frequency updates
+- Large position handling
+- Concurrent trade execution
+- Memory leak detection
+- RPC failover
+- Cache efficiency

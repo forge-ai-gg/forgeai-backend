@@ -8,6 +8,8 @@ export enum EnumUpdateInterval {
 export enum EnumTradeStatus {
     OPEN = "open",
     CLOSED = "closed",
+    PENDING = "pending",
+    FAILED = "failed",
 }
 
 export enum EnumTradeType {

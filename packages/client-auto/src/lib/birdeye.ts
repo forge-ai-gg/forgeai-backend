@@ -4,7 +4,8 @@ import { DefiHistoryPriceResponse } from "../types/birdeye/api/defi";
 import { WalletPortfolioResponse } from "../types/birdeye/api/wallet";
 export const BIRDEYE_BASE_URL = "https://public-api.birdeye.so";
 
-export async function fetchWalletPortfolio(walletAddress: string) {
+// get the wallet portfolio for a wallet address
+export const fetchWalletPortfolio = async (walletAddress: string) => {
     try {
         const response = await fetch(
             `${BIRDEYE_BASE_URL}/v1/wallet/token_list?wallet=${walletAddress}`,
@@ -26,31 +27,13 @@ export async function fetchWalletPortfolio(walletAddress: string) {
         console.error("Error fetching wallet portfolio:", error);
         throw error;
     }
-}
+};
 
-export async function fetchPriceHistory({
-    tokenAddress,
-    addressType,
-    period,
-    timeFrom,
-    timeTo,
-}: {
-    tokenAddress: string;
-    addressType: "token" | "pair";
-    period: TimeInterval;
-    timeFrom?: number;
-    timeTo?: number;
-}) {
-    // default to 1 day ago
-    const time_from =
-        timeFrom ||
-        Math.floor((new Date().getTime() - 1000 * 60 * 60 * 24) / 1000);
-    const time_to = timeTo || Math.floor(new Date().getTime() / 1000);
-
+// get the price history for a token
+export const fetchPriceHistory = async (url: string) => {
     try {
-        const dataUrl = `${BIRDEYE_BASE_URL}/defi/history_price?address=${tokenAddress}&address_type=${addressType}&type=${period}&time_from=${time_from}&time_to=${time_to}`;
-        elizaLogger.info("Fetching price history from:", dataUrl);
-        const response = await fetch(dataUrl, {
+        elizaLogger.info("Fetching price history from:", url);
+        const response = await fetch(url, {
             headers: {
                 accept: "application/json",
                 "x-chain": "solana",
@@ -61,16 +44,25 @@ export async function fetchPriceHistory({
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const priceHistoryResponse: DefiHistoryPriceResponse =
-            await response.json();
-        // elizaLogger.info("Price history:", priceHistoryResponse);
 
-        return {
-            priceHistoryResponse,
-            dataUrl,
-        };
+        return (await response.json()) as DefiHistoryPriceResponse;
     } catch (error) {
         console.error("Error fetching price history:", error);
         throw error;
     }
-}
+};
+
+// get the price history url
+export const priceHistoryUrl = (
+    tokenAddress: string,
+    addressType: "token" | "pair",
+    period: TimeInterval,
+    timeFrom?: number,
+    timeTo?: number
+) => {
+    const time_from =
+        timeFrom ||
+        Math.floor((new Date().getTime() - 1000 * 60 * 60 * 24) / 1000);
+    const time_to = timeTo || Math.floor(new Date().getTime() / 1000);
+    return `${BIRDEYE_BASE_URL}/defi/history_price?address=${tokenAddress}&address_type=${addressType}&type=${period}&time_from=${time_from}&time_to=${time_to}`;
+};

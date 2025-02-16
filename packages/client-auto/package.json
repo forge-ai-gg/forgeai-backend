@@ -20,23 +20,26 @@
 	],
 	"dependencies": {
 		"@elizaos/core": "workspace:*",
+		"@prisma/client": "^5.22.0",
+		"@solana/web3.js": "npm:@solana/web3.js@1.95.8",
 		"@types/body-parser": "1.19.5",
 		"@types/cors": "2.8.17",
 		"@types/express": "5.0.0",
-		"@prisma/client": "^5.22.0",
-		"prisma": "^5.22.0",
 		"body-parser": "1.20.3",
 		"cors": "2.8.5",
+		"envalid": "^8.0.0",
 		"multer": "1.4.5-lts.1",
-		"zod-prisma-types": "^3.2.1",
-		"solana-agent-kit": "^1.2.0"
+		"prisma": "^5.22.0",
+		"solana-agent-kit": "^1.0.0",
+		"technicalindicators": "^3.1.0",
+		"zod-prisma-types": "^3.2.1"
 	},
 	"devDependencies": {
 		"tsup": "8.3.5"
 	},
 	"scripts": {
 		"build": "tsup --format esm --dts",
-		"dev": "tsup --format esm --dts --watch",
+		"dev": "pnpm prisma:generate && tsup --format esm --dts --watch",
 		"prisma:generate": "prisma generate --no-hints",
 		"prisma:pull": "npx prisma db pull && pnpm prisma:generate"
 	},
