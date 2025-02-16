@@ -1,7 +1,5 @@
-import { IAgentRuntime } from "@elizaos/core";
-import { APOLLO_WALLET_ADDRESS } from "../forge/constants";
+import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import {
-    ACTIONS_PROMPTS,
     generateRandomThought,
     generateRandomThought as generateTradingThought,
 } from "../forge/random-thoughts";
@@ -10,23 +8,44 @@ import { priceHistoryUrl } from "../lib/birdeye";
 import { EnumMemoryType } from "../lib/enums";
 import { TimeInterval } from "../types/birdeye/api/common";
 
+interface CreateTradeMemoryParams {
+    message: string;
+    tokenAddress: string;
+    timeInterval: TimeInterval;
+    currentRsi: number;
+    overBought: number;
+    overSold: number;
+    proximityToThreshold: number;
+    tx: string;
+    tradeHistory: any;
+    memoryText: string;
+    memoryContext: Record<string, any>;
+}
+
+interface CreateIdleMemoryParams {
+    tokenAddress: string;
+    timeInterval: TimeInterval;
+    proximityToThreshold: number;
+    memoryText: string;
+    memoryContext: Record<string, any>;
+}
+
 export class MemoryService {
     constructor(private runtime: IAgentRuntime) {}
 
-    async createTradeMemory(params: {
-        message: string;
-        tokenAddress: string;
-        timeInterval: TimeInterval;
-        currentRsi: number;
-        overBought: number;
-        overSold: number;
-        proximityToThreshold: number;
-        tx: string;
-        tradeHistory: any;
-    }) {
+    async createTradeMemory(params: CreateTradeMemoryParams) {
+        const baseAction = `Executing ${params.memoryText}`;
+        const coloredThought = await generateTradingThought({
+            runtime: this.runtime,
+            action: baseAction,
+            details: {
+                context: params.memoryContext,
+            },
+        });
+
         return await createMemory({
             runtime: this.runtime,
-            message: params.message,
+            message: coloredThought.text,
             additionalContent: {
                 type: EnumMemoryType.TRADE,
                 dataUrl: this.generatePriceHistoryUrl(
@@ -39,36 +58,37 @@ export class MemoryService {
                 proximityToThreshold: params.proximityToThreshold,
                 tx: params.tx,
                 tradeHistory: params.tradeHistory,
+                context: params.memoryContext,
+                originalAnalysis: params.memoryText,
             },
         });
     }
 
-    async createIdleMemory(params: {
-        tokenAddress: string;
-        timeInterval: TimeInterval;
-        proximityToThreshold: number;
-    }) {
-        const randomThought = await generateRandomThought({
+    async createIdleMemory(params: CreateIdleMemoryParams) {
+        // const actionPrompt =
+        //     ACTIONS_PROMPTS[Math.floor(Math.random() * ACTIONS_PROMPTS.length)];
+
+        const baseAction = `You analyzed the market and observed: ${params.memoryText}`;
+        const thought = await generateRandomThought({
             runtime: this.runtime,
-            action: ACTIONS_PROMPTS[
-                Math.floor(Math.random() * ACTIONS_PROMPTS.length)
-            ],
-            details: {
-                walletAddress: APOLLO_WALLET_ADDRESS,
-            },
+            action: baseAction,
         });
 
+        elizaLogger.info("thought:", thought);
+
         return {
-            thought: randomThought,
+            thought,
             memory: await createMemory({
                 runtime: this.runtime,
-                message: randomThought.text,
+                message: thought.text,
                 additionalContent: {
                     dataUrl: this.generatePriceHistoryUrl(
                         params.tokenAddress,
                         params.timeInterval
                     ),
                     proximityToThreshold: params.proximityToThreshold,
+                    context: params.memoryContext,
+                    originalAnalysis: params.memoryText,
                 },
             }),
         };

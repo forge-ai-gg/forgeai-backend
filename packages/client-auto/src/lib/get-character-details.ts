@@ -26,8 +26,10 @@ export const getCharacterDetails = async ({
     const publicKey =
         runtime.character.settings.secrets.SOLANA_WALLET_PUBLIC_KEY;
 
+    const shortId = runtime.character.id.slice(0, 4);
+
     elizaLogger.info(
-        `Running auto update cycle #${cycle} for ${runtime.character.name} (${runtime.agentId}) Public Key: ${publicKey}`
+        `Running auto update cycle #${cycle} for ${runtime.character.name} (${shortId}) Public Key: ${publicKey}...`
     );
 
     // get trading stra I hear a timer 10 more minutes 10 more minutes OKtegy assignments

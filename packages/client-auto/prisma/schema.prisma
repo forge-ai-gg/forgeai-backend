@@ -886,7 +886,7 @@ model TradeHistory {
   status                              String                  @default("open")
   type                                String
   side                                String
-  transactionHash                     String?
+  transactionHash                     String
   failureReason                       String?
   metadata                            Json?                   @default("{}")
   createdAt                           DateTime                @default(now())

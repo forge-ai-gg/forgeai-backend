@@ -1,7 +1,7 @@
-import { elizaLogger } from "@elizaos/core";
 import { TimeInterval } from "../types/birdeye/api/common";
 import { DefiHistoryPriceResponse } from "../types/birdeye/api/defi";
 import { WalletPortfolioResponse } from "../types/birdeye/api/wallet";
+import { config } from "./config";
 export const BIRDEYE_BASE_URL = "https://public-api.birdeye.so";
 
 // get the wallet portfolio for a wallet address
@@ -13,7 +13,7 @@ export const fetchWalletPortfolio = async (walletAddress: string) => {
                 headers: {
                     accept: "application/json",
                     "x-chain": "solana",
-                    "X-API-KEY": process.env.BIRDEYE_API_KEY as string,
+                    "X-API-KEY": config.BIRDEYE_API_KEY as string,
                 },
             }
         );
@@ -32,12 +32,11 @@ export const fetchWalletPortfolio = async (walletAddress: string) => {
 // get the price history for a token
 export const fetchPriceHistory = async (url: string) => {
     try {
-        elizaLogger.info("Fetching price history from:", url);
         const response = await fetch(url, {
             headers: {
                 accept: "application/json",
                 "x-chain": "solana",
-                "X-API-KEY": process.env.BIRDEYE_API_KEY as string,
+                "X-API-KEY": config.BIRDEYE_API_KEY as string,
             },
         });
 

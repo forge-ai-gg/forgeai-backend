@@ -6,3 +6,10 @@ export const tokenAddresses = {
 } as const;
 
 export const JUPITER_PROGRAM_ID = "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB";
+
+// Configuration flags for trading behavior
+export const FORCE_TRADE = true; // Forces trade execution regardless of conditions
+export const FORCE_PAPER_TRADING = false; // Forces paper trading mode when true
+export const FORCE_LIVE_TRADING = false; // Forces live trading mode when true
+export const FORCE_OPEN_POSITION = false; // Forces open position when true
+export const FORCE_CLOSE_POSITION = false; // Forces close position when true

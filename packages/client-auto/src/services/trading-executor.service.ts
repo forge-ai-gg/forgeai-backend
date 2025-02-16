@@ -3,13 +3,34 @@ import { Connection } from "@solana/web3.js";
 import { SolanaAgentKit } from "solana-agent-kit";
 import { sma } from "technicalindicators";
 import { config } from "../lib/config";
+import { FORCE_LIVE_TRADING, FORCE_PAPER_TRADING } from "../lib/constants";
 import { getCharacterDetails } from "../lib/get-character-details";
+import { TimeInterval } from "../types/birdeye/api/common";
 import { TradingStrategyConfig } from "../types/trading-strategy-config";
 import { MarketDataService } from "./market-data.service";
 import { MemoryService } from "./memory.service";
 import { PortfolioService } from "./portfolio.service";
 import { TradingStrategyService } from "./trading-strategy.service";
 import { TradingService } from "./trading.service";
+
+interface ExecuteTradeParams {
+    shouldBuy: boolean;
+    amountToTrade: number;
+    tradingStrategyConfig: any; // Replace with proper type
+    publicKey: string;
+    currentRsi: number;
+    proximityToThreshold: number;
+    memoryText: string;
+    memoryContext: Record<string, any>;
+}
+
+interface CreateIdleMemoryParams {
+    tokenAddress: string;
+    timeInterval: TimeInterval;
+    proximityToThreshold: number;
+    memoryText: string;
+    memoryContext: Record<string, any>;
+}
 
 export class TradingExecutor {
     private connection: Connection;
@@ -45,7 +66,8 @@ export class TradingExecutor {
         const tradingStrategyConfig =
             tradingStrategyAssignment.config as TradingStrategyConfig;
         const isPaperTrading =
-            tradingStrategyAssignment.isPaperTrading || false;
+            tradingStrategyAssignment.isPaperTrading ||
+            (FORCE_PAPER_TRADING && !FORCE_LIVE_TRADING);
 
         this.tradingService = new TradingService(
             this.connection,
@@ -83,7 +105,7 @@ export class TradingExecutor {
         const currentRsi =
             relativeStrengthIndex[relativeStrengthIndex.length - 1];
 
-        elizaLogger.info("SMA COUNT: ", simpleMovingAverage.length);
+        elizaLogger.info(`SMA COUNT: ${simpleMovingAverage.length}`);
 
         return { currentRsi, simpleMovingAverage };
     }
@@ -117,14 +139,7 @@ export class TradingExecutor {
         };
     }
 
-    async executeTrade(params: {
-        shouldBuy: boolean;
-        amountToTrade: number;
-        tradingStrategyConfig: any;
-        publicKey: string;
-        currentRsi: number;
-        proximityToThreshold: number;
-    }) {
+    async executeTrade(params: ExecuteTradeParams) {
         const {
             shouldBuy,
             amountToTrade,
@@ -132,6 +147,8 @@ export class TradingExecutor {
             publicKey,
             currentRsi,
             proximityToThreshold,
+            memoryText,
+            memoryContext,
         } = params;
 
         const tokenFrom =
@@ -162,16 +179,14 @@ export class TradingExecutor {
             proximityToThreshold,
             tx,
             tradingStrategyConfig,
+            memoryText,
+            memoryContext,
         });
 
         return tx;
     }
 
-    async createIdleMemory(params: {
-        tokenAddress: string;
-        timeInterval: any;
-        proximityToThreshold: number;
-    }) {
+    async createIdleMemory(params: CreateIdleMemoryParams) {
         return await this.memoryService.createIdleMemory(params);
     }
 
@@ -185,17 +200,11 @@ export class TradingExecutor {
         proximityToThreshold: number;
         tx: string;
         tradingStrategyConfig: any;
+        memoryText: string;
+        memoryContext: Record<string, any>;
     }) {
-        const tradingThought = await this.memoryService.generateTradingThought({
-            amountToTrade: params.amountToTrade,
-            shouldBuy: params.shouldBuy,
-            tokenFromSymbol: params.tokenFrom.symbol,
-            tokenToSymbol: params.tokenTo.symbol,
-            walletAddress: params.publicKey,
-        });
-
         await this.memoryService.createTradeMemory({
-            message: tradingThought.text,
+            message: params.memoryText,
             tokenAddress: params.tokenFrom.address,
             timeInterval: params.tradingStrategyConfig.timeInterval,
             currentRsi: params.currentRsi,
@@ -204,6 +213,8 @@ export class TradingExecutor {
             proximityToThreshold: params.proximityToThreshold,
             tx: params.tx,
             tradeHistory: null,
+            memoryText: params.memoryText,
+            memoryContext: params.memoryContext,
         });
     }
 }

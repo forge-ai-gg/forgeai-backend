@@ -1,4 +1,6 @@
+import { existsSync } from "fs";
 import { readFile } from "fs/promises";
+import { glob } from "glob";
 import { join } from "path";
 import { names, uniqueNamesGenerator } from "unique-names-generator";
 import { v4 as uuidv4 } from "uuid";
@@ -27,7 +29,11 @@ import { getProviders } from "./providers.ts";
 import { RAGKnowledgeManager } from "./ragknowledge.ts";
 import settings from "./settings.ts";
 import {
+    type Action,
+    type Actor,
     type Character,
+    type DirectoryItem,
+    type Evaluator,
     type Goal,
     type HandlerCallback,
     type IAgentRuntime,
@@ -37,6 +43,7 @@ import {
     type IRAGKnowledgeManager,
     type IVerifiableInferenceAdapter,
     type KnowledgeItem,
+    type Memory,
     // RAGKnowledgeItem,
     //Media,
     ModelClass,
@@ -47,15 +54,8 @@ import {
     type ServiceType,
     type State,
     type UUID,
-    type Action,
-    type Actor,
-    type Evaluator,
-    type Memory,
-    type DirectoryItem,
 } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
-import { glob } from "glob";
-import { existsSync } from "fs";
 /**
  * Represents the runtime environment for an agent, handling message processing,
  * action registration, and interaction with external services like OpenAI and Supabase.
@@ -181,7 +181,7 @@ export class AgentRuntime implements IAgentRuntime {
 
         if (this.memoryManagers.has(manager.tableName)) {
             elizaLogger.warn(
-                `Memory manager ${manager.tableName} is already registered. Skipping registration.`,
+                `Memory manager ${manager.tableName} is already registered. Skipping registration.`
             );
             return;
         }
@@ -208,7 +208,7 @@ export class AgentRuntime implements IAgentRuntime {
 
         if (this.services.has(serviceType)) {
             elizaLogger.warn(
-                `Service ${serviceType} is already registered. Skipping registration.`,
+                `Service ${serviceType} is already registered. Skipping registration.`
             );
             return;
         }
@@ -264,7 +264,7 @@ export class AgentRuntime implements IAgentRuntime {
         });
 
         elizaLogger.debug(
-            `[AgentRuntime] Process working directory: ${process.cwd()}`,
+            `[AgentRuntime] Process working directory: ${process.cwd()}`
         );
 
         // Define the root path once
@@ -272,11 +272,11 @@ export class AgentRuntime implements IAgentRuntime {
             process.cwd(),
             "..",
             "characters",
-            "knowledge",
+            "knowledge"
         );
 
         elizaLogger.debug(
-            `[AgentRuntime] Process knowledgeRoot: ${this.knowledgeRoot}`,
+            `[AgentRuntime] Process knowledgeRoot: ${this.knowledgeRoot}`
         );
 
         this.#conversationLength =
@@ -299,7 +299,7 @@ export class AgentRuntime implements IAgentRuntime {
         this.ensureUserExists(
             this.agentId,
             this.character.username || this.character.name,
-            this.character.name,
+            this.character.name
         ).then(() => {
             // postgres needs the user to exist before you can add a participant
             this.ensureParticipantExists(this.agentId, this.agentId);
@@ -353,15 +353,6 @@ export class AgentRuntime implements IAgentRuntime {
         this.serverUrl = opts.serverUrl ?? this.serverUrl;
 
         elizaLogger.info("Setting model provider...");
-        elizaLogger.info("Model Provider Selection:", {
-            characterModelProvider: this.character.modelProvider,
-            optsModelProvider: opts.modelProvider,
-            currentModelProvider: this.modelProvider,
-            finalSelection:
-                this.character.modelProvider ??
-                opts.modelProvider ??
-                this.modelProvider,
-        });
 
         this.modelProvider =
             this.character.modelProvider ??
@@ -374,14 +365,14 @@ export class AgentRuntime implements IAgentRuntime {
         elizaLogger.info(`Selected model provider: ${this.modelProvider}`);
 
         elizaLogger.info(
-            `Selected image model provider: ${this.imageModelProvider}`,
+            `Selected image model provider: ${this.imageModelProvider}`
         );
 
         this.imageVisionModelProvider =
             this.character.imageVisionModelProvider ?? this.modelProvider;
 
         elizaLogger.info(
-            `Selected image vision model provider: ${this.imageVisionModelProvider}`,
+            `Selected image vision model provider: ${this.imageVisionModelProvider}`
         );
 
         // Validate model provider
@@ -389,7 +380,7 @@ export class AgentRuntime implements IAgentRuntime {
             elizaLogger.error("Invalid model provider:", this.modelProvider);
             elizaLogger.error(
                 "Available providers:",
-                Object.values(ModelProviderName),
+                Object.values(ModelProviderName)
             );
             throw new Error(`Invalid model provider: ${this.modelProvider}`);
         }
@@ -444,12 +435,12 @@ export class AgentRuntime implements IAgentRuntime {
                 await service.initialize(this);
                 this.services.set(serviceType, service);
                 elizaLogger.success(
-                    `Service ${serviceType} initialized successfully`,
+                    `Service ${serviceType} initialized successfully`
                 );
             } catch (error) {
                 elizaLogger.error(
                     `Failed to initialize service ${serviceType}:`,
-                    error,
+                    error
                 );
                 throw error;
             }
@@ -458,7 +449,7 @@ export class AgentRuntime implements IAgentRuntime {
         for (const plugin of this.plugins) {
             if (plugin.services)
                 await Promise.all(
-                    plugin.services?.map((service) => service.initialize(this)),
+                    plugin.services?.map((service) => service.initialize(this))
                 );
         }
 
@@ -468,11 +459,13 @@ export class AgentRuntime implements IAgentRuntime {
             this.character.knowledge.length > 0
         ) {
             elizaLogger.info(
-                `[RAG Check] RAG Knowledge enabled: ${this.character.settings.ragKnowledge ? true : false}`,
+                `[RAG Check] RAG Knowledge enabled: ${
+                    this.character.settings.ragKnowledge ? true : false
+                }`
             );
             elizaLogger.info(
                 `[RAG Check] Knowledge items:`,
-                this.character.knowledge,
+                this.character.knowledge
             );
 
             if (this.character.settings.ragKnowledge) {
@@ -483,18 +476,25 @@ export class AgentRuntime implements IAgentRuntime {
                             if (typeof item === "object") {
                                 if (isDirectoryItem(item)) {
                                     elizaLogger.debug(
-                                        `[RAG Filter] Found directory item: ${JSON.stringify(item)}`,
+                                        `[RAG Filter] Found directory item: ${JSON.stringify(
+                                            item
+                                        )}`
                                     );
                                     acc[0].push(item);
                                 } else if ("path" in item) {
                                     elizaLogger.debug(
-                                        `[RAG Filter] Found path item: ${JSON.stringify(item)}`,
+                                        `[RAG Filter] Found path item: ${JSON.stringify(
+                                            item
+                                        )}`
                                     );
                                     acc[1].push(item);
                                 }
                             } else if (typeof item === "string") {
                                 elizaLogger.debug(
-                                    `[RAG Filter] Found string item: ${item.slice(0, 100)}...`,
+                                    `[RAG Filter] Found string item: ${item.slice(
+                                        0,
+                                        100
+                                    )}...`
                                 );
                                 acc[2].push(item);
                             }
@@ -503,22 +503,24 @@ export class AgentRuntime implements IAgentRuntime {
                         [[], [], []] as [
                             Array<{ directory: string; shared?: boolean }>,
                             Array<{ path: string; shared?: boolean }>,
-                            Array<string>,
-                        ],
+                            Array<string>
+                        ]
                     );
 
                 elizaLogger.info(
-                    `[RAG Summary] Found ${directoryKnowledge.length} directories, ${pathKnowledge.length} paths, and ${stringKnowledge.length} strings`,
+                    `[RAG Summary] Found ${directoryKnowledge.length} directories, ${pathKnowledge.length} paths, and ${stringKnowledge.length} strings`
                 );
 
                 // Process each type of knowledge
                 if (directoryKnowledge.length > 0) {
                     elizaLogger.info(
-                        `[RAG Process] Processing directory knowledge sources:`,
+                        `[RAG Process] Processing directory knowledge sources:`
                     );
                     for (const dir of directoryKnowledge) {
                         elizaLogger.info(
-                            `  - Directory: ${dir.directory} (shared: ${!!dir.shared})`,
+                            `  - Directory: ${
+                                dir.directory
+                            } (shared: ${!!dir.shared})`
                         );
                         await this.processCharacterRAGDirectory(dir);
                     }
@@ -526,28 +528,28 @@ export class AgentRuntime implements IAgentRuntime {
 
                 if (pathKnowledge.length > 0) {
                     elizaLogger.info(
-                        `[RAG Process] Processing individual file knowledge sources`,
+                        `[RAG Process] Processing individual file knowledge sources`
                     );
                     await this.processCharacterRAGKnowledge(pathKnowledge);
                 }
 
                 if (stringKnowledge.length > 0) {
                     elizaLogger.info(
-                        `[RAG Process] Processing direct string knowledge`,
+                        `[RAG Process] Processing direct string knowledge`
                     );
                     await this.processCharacterKnowledge(stringKnowledge);
                 }
             } else {
                 // Non-RAG mode: only process string knowledge
                 const stringKnowledge = this.character.knowledge.filter(
-                    (item): item is string => typeof item === "string",
+                    (item): item is string => typeof item === "string"
                 );
                 await this.processCharacterKnowledge(stringKnowledge);
             }
 
             // After all new knowledge is processed, clean up any deleted files
             elizaLogger.info(
-                `[RAG Cleanup] Starting cleanup of deleted knowledge files`,
+                `[RAG Cleanup] Starting cleanup of deleted knowledge files`
             );
             await this.ragKnowledgeManager.cleanupDeletedKnowledgeFiles();
             elizaLogger.info(`[RAG Cleanup] Cleanup complete`);
@@ -570,7 +572,7 @@ export class AgentRuntime implements IAgentRuntime {
                 "runtime::stop - requesting",
                 cStr,
                 "client stop for",
-                this.character.name,
+                this.character.name
             );
             c.stop();
         }
@@ -587,8 +589,9 @@ export class AgentRuntime implements IAgentRuntime {
     private async processCharacterKnowledge(items: string[]) {
         for (const item of items) {
             const knowledgeId = stringToUuid(item);
-            const existingDocument =
-                await this.documentsManager.getMemoryById(knowledgeId);
+            const existingDocument = await this.documentsManager.getMemoryById(
+                knowledgeId
+            );
             if (existingDocument) {
                 continue;
             }
@@ -597,7 +600,7 @@ export class AgentRuntime implements IAgentRuntime {
                 "Processing knowledge for ",
                 this.character.name,
                 " - ",
-                item.slice(0, 100),
+                item.slice(0, 100)
             );
 
             await knowledge.set(this, {
@@ -616,7 +619,7 @@ export class AgentRuntime implements IAgentRuntime {
      * An array of knowledge items or objects containing id, path, and content.
      */
     private async processCharacterRAGKnowledge(
-        items: (string | { path: string; shared?: boolean })[],
+        items: (string | { path: string; shared?: boolean })[]
     ) {
         let hasError = false;
 
@@ -639,7 +642,7 @@ export class AgentRuntime implements IAgentRuntime {
                 // const knowledgeId = stringToUuid(contentItem);
                 const knowledgeId = this.ragKnowledgeManager.generateScopedId(
                     contentItem,
-                    isShared,
+                    isShared
                 );
                 const fileExtension = contentItem
                     .split(".")
@@ -696,7 +699,7 @@ export class AgentRuntime implements IAgentRuntime {
                         // Read file content
                         const content: string = await readFile(
                             filePath,
-                            "utf8",
+                            "utf8"
                         );
                         if (!content) {
                             hasError = true;
@@ -716,27 +719,33 @@ export class AgentRuntime implements IAgentRuntime {
                                 contentSample: content.slice(0, 100),
                                 existingContentSample: existingContent.slice(
                                     0,
-                                    100,
+                                    100
                                 ),
                                 matches: existingContent === content,
                             });
 
                             if (existingContent === content) {
                                 elizaLogger.info(
-                                    `${isShared ? "Shared knowledge" : "Knowledge"} ${contentItem} unchanged, skipping`,
+                                    `${
+                                        isShared
+                                            ? "Shared knowledge"
+                                            : "Knowledge"
+                                    } ${contentItem} unchanged, skipping`
                                 );
                                 continue;
                             }
 
                             // Content changed, remove old knowledge before adding new
                             elizaLogger.info(
-                                `${isShared ? "Shared knowledge" : "Knowledge"} ${contentItem} changed, updating...`,
+                                `${
+                                    isShared ? "Shared knowledge" : "Knowledge"
+                                } ${contentItem} changed, updating...`
                             );
                             await this.ragKnowledgeManager.removeKnowledge(
-                                knowledgeId,
+                                knowledgeId
                             );
                             await this.ragKnowledgeManager.removeKnowledge(
-                                `${knowledgeId}-chunk-*` as UUID,
+                                `${knowledgeId}-chunk-*` as UUID
                             );
                         }
 
@@ -744,7 +753,7 @@ export class AgentRuntime implements IAgentRuntime {
                             `Processing ${fileExtension.toUpperCase()} file content for`,
                             this.character.name,
                             "-",
-                            contentItem,
+                            contentItem
                         );
 
                         await this.ragKnowledgeManager.processFile({
@@ -757,7 +766,7 @@ export class AgentRuntime implements IAgentRuntime {
                         hasError = true;
                         elizaLogger.error(
                             `Failed to read knowledge file ${contentItem}. Error details:`,
-                            error?.message || error || "Unknown error",
+                            error?.message || error || "Unknown error"
                         );
                         continue;
                     }
@@ -767,7 +776,7 @@ export class AgentRuntime implements IAgentRuntime {
                         "Processing direct knowledge for",
                         this.character.name,
                         "-",
-                        contentItem.slice(0, 100),
+                        contentItem.slice(0, 100)
                     );
 
                     const existingKnowledge =
@@ -778,7 +787,7 @@ export class AgentRuntime implements IAgentRuntime {
 
                     if (existingKnowledge.length > 0) {
                         elizaLogger.info(
-                            `Direct knowledge ${knowledgeId} already exists, skipping`,
+                            `Direct knowledge ${knowledgeId} already exists, skipping`
                         );
                         continue;
                     }
@@ -798,7 +807,7 @@ export class AgentRuntime implements IAgentRuntime {
                 hasError = true;
                 elizaLogger.error(
                     `Error processing knowledge item ${item}:`,
-                    error?.message || error || "Unknown error",
+                    error?.message || error || "Unknown error"
                 );
                 continue;
             }
@@ -806,7 +815,7 @@ export class AgentRuntime implements IAgentRuntime {
 
         if (hasError) {
             elizaLogger.warn(
-                "Some knowledge items failed to process, but continuing with available knowledge",
+                "Some knowledge items failed to process, but continuing with available knowledge"
             );
         }
     }
@@ -833,7 +842,7 @@ export class AgentRuntime implements IAgentRuntime {
             const dirExists = existsSync(dirPath);
             if (!dirExists) {
                 elizaLogger.error(
-                    `[RAG Directory] Directory does not exist: ${sanitizedDir}`,
+                    `[RAG Directory] Directory does not exist: ${sanitizedDir}`
                 );
                 return;
             }
@@ -848,13 +857,13 @@ export class AgentRuntime implements IAgentRuntime {
 
             if (files.length === 0) {
                 elizaLogger.warn(
-                    `No matching files found in directory: ${dirConfig.directory}`,
+                    `No matching files found in directory: ${dirConfig.directory}`
                 );
                 return;
             }
 
             elizaLogger.info(
-                `[RAG Directory] Found ${files.length} files in ${dirConfig.directory}`,
+                `[RAG Directory] Found ${files.length} files in ${dirConfig.directory}`
             );
 
             // Process files in batches to avoid memory issues
@@ -868,12 +877,14 @@ export class AgentRuntime implements IAgentRuntime {
                             const relativePath = join(sanitizedDir, file);
 
                             elizaLogger.debug(
-                                `[RAG Directory] Processing file ${i + 1}/${files.length}:`,
+                                `[RAG Directory] Processing file ${i + 1}/${
+                                    files.length
+                                }:`,
                                 {
                                     file,
                                     relativePath,
                                     shared: dirConfig.shared,
-                                },
+                                }
                             );
 
                             await this.processCharacterRAGKnowledge([
@@ -891,19 +902,22 @@ export class AgentRuntime implements IAgentRuntime {
                                           message: error.message,
                                           stack: error.stack,
                                       }
-                                    : error,
+                                    : error
                             );
                         }
-                    }),
+                    })
                 );
 
                 elizaLogger.debug(
-                    `[RAG Directory] Completed batch ${Math.min(i + BATCH_SIZE, files.length)}/${files.length} files`,
+                    `[RAG Directory] Completed batch ${Math.min(
+                        i + BATCH_SIZE,
+                        files.length
+                    )}/${files.length} files`
                 );
             }
 
             elizaLogger.success(
-                `[RAG Directory] Successfully processed directory: ${sanitizedDir}`,
+                `[RAG Directory] Successfully processed directory: ${sanitizedDir}`
             );
         } catch (error) {
             elizaLogger.error(
@@ -914,7 +928,7 @@ export class AgentRuntime implements IAgentRuntime {
                           message: error.message,
                           stack: error.stack,
                       }
-                    : error,
+                    : error
             );
             throw error; // Re-throw to let caller handle it
         }
@@ -980,7 +994,7 @@ export class AgentRuntime implements IAgentRuntime {
         message: Memory,
         responses: Memory[],
         state?: State,
-        callback?: HandlerCallback,
+        callback?: HandlerCallback
     ): Promise<void> {
         for (const response of responses) {
             if (!response.content?.action) {
@@ -1001,8 +1015,8 @@ export class AgentRuntime implements IAgentRuntime {
                         .replace("_", "")
                         .includes(normalizedAction) ||
                     normalizedAction.includes(
-                        a.name.toLowerCase().replace("_", ""),
-                    ),
+                        a.name.toLowerCase().replace("_", "")
+                    )
             );
 
             if (!action) {
@@ -1015,13 +1029,13 @@ export class AgentRuntime implements IAgentRuntime {
                                 .replace("_", "")
                                 .includes(normalizedAction) ||
                             normalizedAction.includes(
-                                simile.toLowerCase().replace("_", ""),
-                            ),
+                                simile.toLowerCase().replace("_", "")
+                            )
                     );
                     if (simileAction) {
                         action = _action;
                         elizaLogger.success(
-                            `Action found in similes: ${action.name}`,
+                            `Action found in similes: ${action.name}`
                         );
                         break;
                     }
@@ -1031,7 +1045,7 @@ export class AgentRuntime implements IAgentRuntime {
             if (!action) {
                 elizaLogger.error(
                     "No action found for",
-                    response.content.action,
+                    response.content.action
                 );
                 continue;
             }
@@ -1043,7 +1057,7 @@ export class AgentRuntime implements IAgentRuntime {
 
             try {
                 elizaLogger.info(
-                    `Executing handler for action: ${action.name}`,
+                    `Executing handler for action: ${action.name}`
                 );
                 await action.handler(this, message, state, {}, callback);
             } catch (error) {
@@ -1064,7 +1078,7 @@ export class AgentRuntime implements IAgentRuntime {
         message: Memory,
         state: State,
         didRespond?: boolean,
-        callback?: HandlerCallback,
+        callback?: HandlerCallback
     ) {
         const evaluatorPromises = this.evaluators.map(
             async (evaluator: Evaluator) => {
@@ -1080,12 +1094,12 @@ export class AgentRuntime implements IAgentRuntime {
                     return evaluator;
                 }
                 return null;
-            },
+            }
         );
 
         const resolvedEvaluators = await Promise.all(evaluatorPromises);
         const evaluatorsData = resolvedEvaluators.filter(
-            (evaluator): evaluator is Evaluator => evaluator !== null,
+            (evaluator): evaluator is Evaluator => evaluator !== null
         );
 
         // if there are no evaluators this frame, return
@@ -1112,7 +1126,7 @@ export class AgentRuntime implements IAgentRuntime {
         });
 
         const evaluators = parseJsonArrayFromText(
-            result,
+            result
         ) as unknown as string[];
 
         for (const evaluator of this.evaluators) {
@@ -1151,7 +1165,7 @@ export class AgentRuntime implements IAgentRuntime {
         userName: string | null,
         name: string | null,
         email?: string | null,
-        source?: string | null,
+        source?: string | null
     ) {
         const account = await this.databaseAdapter.getAccountById(userId);
         if (!account) {
@@ -1167,17 +1181,18 @@ export class AgentRuntime implements IAgentRuntime {
     }
 
     async ensureParticipantInRoom(userId: UUID, roomId: UUID) {
-        const participants =
-            await this.databaseAdapter.getParticipantsForRoom(roomId);
+        const participants = await this.databaseAdapter.getParticipantsForRoom(
+            roomId
+        );
         if (!participants.includes(userId)) {
             await this.databaseAdapter.addParticipant(userId, roomId);
             if (userId === this.agentId) {
                 elizaLogger.log(
-                    `Agent ${this.character.name} linked to room ${roomId} successfully.`,
+                    `Agent ${this.character.name} linked to room ${roomId} successfully.`
                 );
             } else {
                 elizaLogger.log(
-                    `User ${userId} linked to room ${roomId} successfully.`,
+                    `User ${userId} linked to room ${roomId} successfully.`
                 );
             }
         }
@@ -1188,20 +1203,20 @@ export class AgentRuntime implements IAgentRuntime {
         roomId: UUID,
         userName?: string,
         userScreenName?: string,
-        source?: string,
+        source?: string
     ) {
         await Promise.all([
             this.ensureUserExists(
                 this.agentId,
                 this.character.username ?? "Agent",
                 this.character.name ?? "Agent",
-                source,
+                source
             ),
             this.ensureUserExists(
                 userId,
                 userName ?? "User" + userId,
                 userScreenName ?? "User" + userId,
-                source,
+                source
             ),
             this.ensureRoomExists(roomId),
         ]);
@@ -1234,7 +1249,7 @@ export class AgentRuntime implements IAgentRuntime {
      */
     async composeState(
         message: Memory,
-        additionalKeys: { [key: string]: unknown } = {},
+        additionalKeys: { [key: string]: unknown } = {}
     ) {
         const { userId, roomId } = message;
 
@@ -1243,7 +1258,7 @@ export class AgentRuntime implements IAgentRuntime {
         const [actorsData, recentMessagesData, goalsData]: [
             Actor[],
             Memory[],
-            Goal[],
+            Goal[]
         ] = await Promise.all([
             getActorDetails({ runtime: this, roomId }),
             this.messageManager.getMemories({
@@ -1277,7 +1292,7 @@ export class AgentRuntime implements IAgentRuntime {
         // const lore = formatLore(loreData);
 
         const senderName = actorsData?.find(
-            (actor: Actor) => actor.id === userId,
+            (actor: Actor) => actor.id === userId
         )?.name;
 
         // TODO: We may wish to consolidate and just accept character.name here instead of the actor name
@@ -1291,7 +1306,7 @@ export class AgentRuntime implements IAgentRuntime {
             const lastMessageWithAttachment = recentMessagesData.find(
                 (msg) =>
                     msg.content.attachments &&
-                    msg.content.attachments.length > 0,
+                    msg.content.attachments.length > 0
             );
 
             if (lastMessageWithAttachment) {
@@ -1323,7 +1338,7 @@ URL: ${attachment.url}
 Type: ${attachment.source}
 Description: ${attachment.description}
 Text: ${attachment.text}
-  `,
+  `
             )
             .join("\n");
 
@@ -1332,7 +1347,7 @@ Text: ${attachment.text}
         // Assuming this.lore is an array of lore bits
         if (this.character.lore && this.character.lore.length > 0) {
             const shuffledLore = [...this.character.lore].sort(
-                () => Math.random() - 0.5,
+                () => Math.random() - 0.5
             );
             const selectedLore = shuffledLore.slice(0, 10);
             lore = selectedLore.join("\n");
@@ -1352,7 +1367,7 @@ Text: ${attachment.text}
             .slice(0, 5)
             .map((example) => {
                 const exampleNames = Array.from({ length: 5 }, () =>
-                    uniqueNamesGenerator({ dictionaries: [names] }),
+                    uniqueNamesGenerator({ dictionaries: [names] })
                 );
 
                 return example
@@ -1362,7 +1377,7 @@ Text: ${attachment.text}
                             const placeholder = `{{user${index + 1}}}`;
                             messageString = messageString.replaceAll(
                                 placeholder,
-                                name,
+                                name
                             );
                         });
                         return messageString;
@@ -1373,7 +1388,7 @@ Text: ${attachment.text}
 
         const getRecentInteractions = async (
             userA: UUID,
-            userB: UUID,
+            userB: UUID
         ): Promise<Memory[]> => {
             // Find all rooms where userA and userB are participants
             const rooms = await this.databaseAdapter.getRoomsForParticipants([
@@ -1395,7 +1410,7 @@ Text: ${attachment.text}
                 : [];
 
         const getRecentMessageInteractions = async (
-            recentInteractionsData: Memory[],
+            recentInteractionsData: Memory[]
         ): Promise<string> => {
             // Format the recent messages
             const formattedInteractions = await Promise.all(
@@ -1407,23 +1422,24 @@ Text: ${attachment.text}
                     } else {
                         const accountId =
                             await this.databaseAdapter.getAccountById(
-                                message.userId,
+                                message.userId
                             );
                         sender = accountId?.username || "unknown";
                     }
                     return `${sender}: ${message.content.text}`;
-                }),
+                })
             );
 
             return formattedInteractions.join("\n");
         };
 
-        const formattedMessageInteractions =
-            await getRecentMessageInteractions(recentInteractions);
+        const formattedMessageInteractions = await getRecentMessageInteractions(
+            recentInteractions
+        );
 
         const getRecentPostInteractions = async (
             recentInteractionsData: Memory[],
-            actors: Actor[],
+            actors: Actor[]
         ): Promise<string> => {
             const formattedInteractions = formatPosts({
                 messages: recentInteractionsData,
@@ -1436,7 +1452,7 @@ Text: ${attachment.text}
 
         const formattedPostInteractions = await getRecentPostInteractions(
             recentInteractions,
-            actorsData,
+            actorsData
         );
 
         // if bio is a string, use it. if its an array, pick one at random
@@ -1481,7 +1497,7 @@ Text: ${attachment.text}
                 this.character.adjectives.length > 0
                     ? this.character.adjectives[
                           Math.floor(
-                              Math.random() * this.character.adjectives.length,
+                              Math.random() * this.character.adjectives.length
                           )
                       ]
                     : "",
@@ -1499,7 +1515,7 @@ Text: ${attachment.text}
                 this.character.topics && this.character.topics.length > 0
                     ? this.character.topics[
                           Math.floor(
-                              Math.random() * this.character.topics.length,
+                              Math.random() * this.character.topics.length
                           )
                       ]
                     : null,
@@ -1526,7 +1542,7 @@ Text: ${attachment.text}
                 formattedCharacterPostExamples.replaceAll("\n", "").length > 0
                     ? addHeader(
                           `# Example Posts for ${this.character.name}`,
-                          formattedCharacterPostExamples,
+                          formattedCharacterPostExamples
                       )
                     : "",
             characterMessageExamples:
@@ -1535,7 +1551,7 @@ Text: ${attachment.text}
                     0
                     ? addHeader(
                           `# Example Conversations for ${this.character.name}`,
-                          formattedCharacterMessageExamples,
+                          formattedCharacterMessageExamples
                       )
                     : "",
             messageDirections:
@@ -1547,7 +1563,7 @@ Text: ${attachment.text}
                               const all = this.character?.style?.all || [];
                               const chat = this.character?.style?.chat || [];
                               return [...all, ...chat].join("\n");
-                          })(),
+                          })()
                       )
                     : "",
 
@@ -1560,7 +1576,7 @@ Text: ${attachment.text}
                               const all = this.character?.style?.all || [];
                               const post = this.character?.style?.post || [];
                               return [...all, ...post].join("\n");
-                          })(),
+                          })()
                       )
                     : "",
 
@@ -1596,7 +1612,7 @@ Text: ${attachment.text}
                 goals && goals.length > 0
                     ? addHeader(
                           "# Goals\n{{agentName}} should prioritize accomplishing the objectives that are in progress.",
-                          goals,
+                          goals
                       )
                     : "",
             goalsData,
@@ -1628,7 +1644,7 @@ Text: ${attachment.text}
             const result = await evaluator.validate(
                 this,
                 message,
-                initialState,
+                initialState
             );
             if (result) {
                 return evaluator;
@@ -1644,7 +1660,7 @@ Text: ${attachment.text}
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(
-            Boolean,
+            Boolean
         ) as Evaluator[];
         const actionsData = resolvedActions.filter(Boolean) as Action[];
 
@@ -1655,14 +1671,14 @@ Text: ${attachment.text}
                 actionsData.length > 0
                     ? addHeader(
                           "# Available Actions",
-                          formatActions(actionsData),
+                          formatActions(actionsData)
                       )
                     : "",
             actionExamples:
                 actionsData.length > 0
                     ? addHeader(
                           "# Action Examples",
-                          composeActionExamples(actionsData, 10),
+                          composeActionExamples(actionsData, 10)
                       )
                     : "",
             evaluatorsData,
@@ -1680,7 +1696,7 @@ Text: ${attachment.text}
                     : "",
             providers: addHeader(
                 `# Additional Information About ${this.character.name} and The World`,
-                providers,
+                providers
             ),
         };
 
@@ -1710,7 +1726,7 @@ Text: ${attachment.text}
             const lastMessageWithAttachment = recentMessagesData.find(
                 (msg) =>
                     msg.content.attachments &&
-                    msg.content.attachments.length > 0,
+                    msg.content.attachments.length > 0
             );
 
             if (lastMessageWithAttachment) {
@@ -1737,7 +1753,7 @@ URL: ${attachment.url}
 Type: ${attachment.source}
 Description: ${attachment.description}
 Text: ${attachment.text}
-    `,
+    `
             )
             .join("\n");
 
@@ -1745,7 +1761,7 @@ Text: ${attachment.text}
             ...state,
             recentMessages: addHeader(
                 "# Conversation Messages",
-                recentMessages,
+                recentMessages
             ),
             recentMessagesData,
             attachments: formattedAttachments,

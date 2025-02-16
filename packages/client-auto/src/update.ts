@@ -1,16 +1,11 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
+import { FORCE_TRADE } from "./lib/constants";
 import { TradingExecutor } from "./services/trading-executor.service";
-
-// Configuration flags for trading behavior
-const FORCE_TRADE = true; // Forces trade execution regardless of conditions
-const FORCE_PAPER_TRADING = false; // Forces paper trading mode when true
-const FORCE_LIVE_TRADING = false; // Forces live trading mode when true
 
 export async function update(runtime: IAgentRuntime, cycle: number) {
     const executor = new TradingExecutor(runtime, cycle);
 
     try {
-        // TODO: Add proper typing for tradingStrategyConfig to resolve linter errors
         const { publicKey, tradingStrategyConfig, isPaperTrading } =
             await executor.initialize();
 
@@ -18,10 +13,6 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
         const { currentRsi } = await executor.analyzeMarket(
             tradingStrategyConfig
         );
-
-        // TODO: Implement additional technical indicators beyond RSI
-        // TODO: Add market volatility analysis
-        // TODO: Add volume analysis
 
         const {
             shouldBuy,
@@ -35,17 +26,51 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
             publicKey,
         });
 
-        // Execute trade if conditions are met or if forced
+        // Build context for memory
+        const memoryContext = {
+            marketAnalysis: {
+                rsi: currentRsi,
+                proximityToThreshold,
+            },
+            portfolio: {
+                availableAmount: availableAmountInPortfolio,
+                proposedTradeAmount: amountToTrade,
+            },
+            strategy: {
+                type: shouldBuy ? "BUY" : shouldSell ? "SELL" : "HOLD",
+                config: tradingStrategyConfig,
+            },
+            tradingMode: isPaperTrading ? "PAPER" : "LIVE",
+        };
+
+        // Generate memory text
+        const memoryText = `Market Analysis: RSI at ${currentRsi.toFixed(2)} (${
+            proximityToThreshold > 0
+                ? `${proximityToThreshold.toFixed(2)}% from ${
+                      shouldBuy ? "oversold" : "overbought"
+                  } threshold at ${
+                      shouldBuy
+                          ? tradingStrategyConfig.rsiConfig.overSold
+                          : tradingStrategyConfig.rsiConfig.overBought
+                  }`
+                : "at threshold"
+        }). Portfolio has ${availableAmountInPortfolio} available. Strategy suggests ${
+            shouldBuy ? "BUY" : shouldSell ? "SELL" : "HOLD"
+        }${amountToTrade ? ` with amount ${amountToTrade}` : ""}. ${
+            !shouldBuy && !shouldSell
+                ? "Conditions not met for trading."
+                : availableAmountInPortfolio <= 0 && !FORCE_TRADE
+                ? "Insufficient portfolio balance for trade."
+                : "Trading conditions met!"
+        }`;
+
         if (
-            (shouldBuy || shouldSell) &&
-            (availableAmountInPortfolio > 0 || FORCE_TRADE)
+            ((shouldBuy || shouldSell) && availableAmountInPortfolio > 0) ||
+            FORCE_TRADE
         ) {
             elizaLogger.info("TRADING CONDITIONS ARE MET!");
-            elizaLogger.info("IS PAPER TRADING: ", isPaperTrading);
+            elizaLogger.info(`PAPER TRADING: ${isPaperTrading}`);
 
-            // TODO: Implement slippage protection
-            // TODO: Add emergency stop conditions
-            // TODO: Add position sizing logic
             await executor.executeTrade({
                 shouldBuy,
                 amountToTrade,
@@ -53,18 +78,23 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
                 publicKey,
                 currentRsi,
                 proximityToThreshold,
+                memoryText,
+                memoryContext,
             });
         } else {
-            // Record state when no trade is executed
             await executor.createIdleMemory({
                 tokenAddress:
                     tradingStrategyConfig.tradingPairs[0].from.address,
                 timeInterval: tradingStrategyConfig.timeInterval,
                 proximityToThreshold,
+                memoryText,
+                memoryContext,
             });
         }
     } catch (e) {
         // TODO: Implement more detailed error handling and recovery strategies
-        elizaLogger.error("Trading execution error:", e);
+        elizaLogger.error(
+            `Trading execution error: ${JSON.stringify(e.message)}`
+        );
     }
 }

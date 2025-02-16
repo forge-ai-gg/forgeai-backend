@@ -1,3 +1,4 @@
+import { elizaLogger } from "@elizaos/core";
 import { rsi, sma } from "technicalindicators";
 import { fetchPriceHistory, priceHistoryUrl } from "../lib/birdeye";
 import { getMillisecondsForTimeInterval } from "../lib/timing";
@@ -57,6 +58,7 @@ export class MarketDataService {
             timeFrom,
             timeTo
         );
+        elizaLogger.info("Fetching price history for:", tokenAddress);
         return await fetchPriceHistory(url);
     }
 

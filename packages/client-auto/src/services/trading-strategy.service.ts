@@ -1,6 +1,7 @@
 import { elizaLogger } from "@elizaos/core";
 import { AgentStrategyAssignment } from "@prisma/client";
 import { EnumTradeStatus } from "../lib/enums";
+import { formatPercent } from "../lib/formatters";
 import { prisma } from "../lib/prisma";
 import { calculateProximityToThreshold } from "../lib/rsi-utils";
 import { TradingStrategyConfig } from "../types/trading-strategy-config";
@@ -27,7 +28,7 @@ export class TradingStrategyService {
 
         elizaLogger.info(
             "Proximity to next action threshold: ",
-            proximityToThreshold + "%"
+            formatPercent(proximityToThreshold / 10000)
         );
 
         const shouldBuy =

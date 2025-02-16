@@ -50,18 +50,17 @@ export const generateRandomThought = async ({
         RANDOM_THOUGHT_PROMPT_VARIATIONS[
             Math.floor(Math.random() * RANDOM_THOUGHT_PROMPT_VARIATIONS.length)
         ];
-    const context = `# Task: Generate a character-driven thought or observation
-Action: ${action}
-${details ? `Details: ${JSON.stringify(details, null, 2)}` : ""}
+    const context = `# Task: Generate a character-driven thought or observation describing the action you are currently taking.
+        
+        # Action: ${action}
 
-${prompt.instruction}
+        ${details ? `# Details: ${JSON.stringify(details, null, 2)}` : ""}
 
-Style guidelines:
-${prompt.style}
+        IMPORTANT: Your response must be valid JSON. You must include the numbers from your action in your response.
+        Respond with a single line of JSON in this exact format:
+        {"text": "your single-line response here"}`;
 
-IMPORTANT: Your response must be valid JSON. Do not include any newlines or special characters in the text field. Feel free to reference the details provided above if you so choose. 
-Respond with a single line of JSON in this exact format:
-{"text": "your single-line response here"}`;
+    elizaLogger.info("context:", context);
 
     try {
         const response = await generateMessageResponse({

@@ -20,13 +20,6 @@ export const calculateProximityToThreshold = (
             0,
             Math.min(100, (1 - distance / range) * 100)
         );
-        elizaLogger.info("Sell proximity calculation:", {
-            currentRsi,
-            overBought,
-            distance,
-            range,
-            proximity,
-        });
         return proximity;
     } else {
         // For no positions, measure distance to oversold (buy threshold)

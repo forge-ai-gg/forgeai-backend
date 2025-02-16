@@ -10,6 +10,8 @@ import { ConfigService } from "./config.service";
 
 const MAX_RETRIES = 3;
 const BACKOFF_BASE = 1000; // ms
+const DUMMY_TRANSACTION_HASH =
+    "0000000000000000000000000000000000000000000000000000000000000000";
 
 export class TradingService implements ITradingService {
     private retryCount: number = 0;
@@ -58,8 +60,7 @@ export class TradingService implements ITradingService {
             );
         }
 
-        let tx =
-            "0000000000000000000000000000000000000000000000000000000000000000";
+        let tx = DUMMY_TRANSACTION_HASH;
 
         try {
             if (!this.isPaperTrading) {
@@ -107,7 +108,7 @@ export class TradingService implements ITradingService {
             this.retryCount = 0; // Reset retry count on success
             return tx;
         } catch (e) {
-            elizaLogger.error("Trade execution error:", e);
+            elizaLogger.error(`Trade execution error: ${JSON.stringify(e)}`);
             await this.recordFailedTrade(
                 shouldBuy,
                 tokenFrom,
@@ -166,6 +167,7 @@ export class TradingService implements ITradingService {
                 AgentStrategyAssignment: {
                     connect: { id: this.strategyAssignmentId },
                 },
+                transactionHash: DUMMY_TRANSACTION_HASH,
             },
         });
     }
