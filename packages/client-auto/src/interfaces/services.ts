@@ -44,6 +44,7 @@ export interface ITradingStrategyService {
 
 export interface IPortfolioService {
     getTokenBalance(publicKey: string, tokenAddress: string): Promise<number>;
+    getOpenPositions(strategyAssignmentId: string): Promise<any>;
 }
 
 export interface IMemoryService {

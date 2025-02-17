@@ -44,7 +44,10 @@ export const fetchPriceHistory = async (url: string) => {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        return (await response.json()) as DefiHistoryPriceResponse;
+        const defiHistoryResponse =
+            (await response.json()) as DefiHistoryPriceResponse;
+
+        return defiHistoryResponse.data.items;
     } catch (error) {
         console.error("Error fetching price history:", error);
         throw error;

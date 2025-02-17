@@ -60,14 +60,16 @@ export interface DefiHistoryPriceParams {
     time_to?: number;
 }
 
+export interface DefiHistoryPriceItem {
+    unixTime?: number;
+    value?: number;
+    address?: string;
+}
+
 export interface DefiHistoryPriceResponse {
     success: boolean;
     data: {
-        items: {
-            unixTime?: number;
-            value?: number;
-            address?: string;
-        }[];
+        items: DefiHistoryPriceItem[];
     };
 }
 

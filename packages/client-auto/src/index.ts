@@ -20,7 +20,7 @@ export class AutoClient {
             DEFAULT_UPDATE_INTERVAL;
 
         elizaLogger.info(
-            `AGENT: ${this.runtime.character.name} (${this.runtime.agentId}) starting auto client.....`
+            `AGENT: ${this.runtime.character.name} (${this.runtime.agentId}) starting auto client...`
         );
 
         // Start the update cycle
@@ -31,7 +31,11 @@ export class AutoClient {
     private async runUpdate(updateInterval: EnumUpdateInterval) {
         if (this.isStopped) return;
 
+        // const rsiStrategy = new RsiStrategyService(this.runtime);
+        // const maStrategy = new MovingAverageStrategy(this.runtime);
+
         await update(this.runtime, this.updateCycle);
+        // await update(this.runtime, this.updateCycle, maStrategy);
 
         if (this.isStopped) return;
 

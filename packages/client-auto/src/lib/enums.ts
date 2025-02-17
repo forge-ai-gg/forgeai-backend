@@ -19,4 +19,14 @@ export enum EnumTradeType {
 
 export enum EnumMemoryType {
     TRADE = "trade",
+    ERROR = "error",
+}
+
+export enum EnumPositionStatus {
+    OPEN = "open",
+    CLOSED = "closed",
+}
+
+export enum EnumStrategyType {
+    RSI = "rsi",
 }

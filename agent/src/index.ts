@@ -556,7 +556,6 @@ export async function initializeClients(
 
     // Start Auto Client if "auto" detected as a configured client
     if (clientTypes.includes(Clients.AUTO)) {
-        elizaLogger.info("Starting Auto Client");
         const autoClient = await AutoClientInterface.start(runtime);
         if (autoClient) clients.auto = autoClient;
     }

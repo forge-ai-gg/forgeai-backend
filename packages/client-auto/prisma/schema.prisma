@@ -91,7 +91,8 @@ model AgentStrategyAssignment {
   User_AgentStrategyAssignment_createdByIdToUser User                 @relation("AgentStrategyAssignment_createdByIdToUser", fields: [createdById], references: [id])
   AgentTradingStrategy                           AgentTradingStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
   User_AgentStrategyAssignment_updatedByIdToUser User                 @relation("AgentStrategyAssignment_updatedByIdToUser", fields: [updatedById], references: [id])
-  TradeHistory                                   TradeHistory[]
+  Position                                       Position[]
+  Transaction                                    Transaction[]
 
   @@index([agentId])
   @@index([agentId, isActive])
@@ -659,6 +660,7 @@ model User {
   OrganizationMember_OrganizationMember_userIdToUser                OrganizationMember[]      @relation("OrganizationMember_userIdToUser")
   Permission_Permission_createdByIdToUser                           Permission[]              @relation("Permission_createdByIdToUser")
   Permission_Permission_updatedByIdToUser                           Permission[]              @relation("Permission_updatedByIdToUser")
+  Position                                                          Position[]
   Role_Role_createdByIdToUser                                       Role[]                    @relation("Role_createdByIdToUser")
   Role_Role_updatedByIdToUser                                       Role[]                    @relation("Role_updatedByIdToUser")
   Scene_Scene_createdByIdToUser                                     Scene[]                   @relation("Scene_createdByIdToUser")
@@ -676,8 +678,7 @@ model User {
   Tournament_Tournament_createdByIdToUser                           Tournament[]              @relation("Tournament_createdByIdToUser")
   Tournament_Tournament_hostIdToUser                                Tournament[]              @relation("Tournament_hostIdToUser")
   Tournament_Tournament_updatedByIdToUser                           Tournament[]              @relation("Tournament_updatedByIdToUser")
-  TradeHistory_TradeHistory_createdByIdToUser                       TradeHistory[]            @relation("TradeHistory_createdByIdToUser")
-  TradeHistory_TradeHistory_updatedByIdToUser                       TradeHistory[]            @relation("TradeHistory_updatedByIdToUser")
+  Transaction                                                       Transaction[]
   UploadedFile_UploadedFile_createdByIdToUser                       UploadedFile[]            @relation("UploadedFile_createdByIdToUser")
   UploadedFile_UploadedFile_updatedByIdToUser                       UploadedFile[]            @relation("UploadedFile_updatedByIdToUser")
   UploadedFile_UploadedFile_userIdToUser                            UploadedFile[]            @relation("UploadedFile_userIdToUser")
@@ -866,45 +867,78 @@ model rooms {
   participants participants[]
 }
 
-model TradeHistory {
-  id                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  strategyAssignmentId                String                  @db.Uuid
-  timestamp                           DateTime                @default(now())
-  tokenFromAddress                    String
-  tokenToAddress                      String
-  tokenFromSymbol                     String
-  tokenToSymbol                       String
-  tokenFromAmount                     String
-  tokenToAmount                       String
-  tokenFromDecimals                   Int
-  tokenToDecimals                     Int
-  entryPrice                          Float
-  exitPrice                           Float?
-  feesInUsd                           Float                   @default(0)
-  profitLossUsd                       Float?
-  profitLossPercentage                Float?
-  status                              String                  @default("open")
-  type                                String
-  side                                String
-  transactionHash                     String
-  failureReason                       String?
-  metadata                            Json?                   @default("{}")
-  createdAt                           DateTime                @default(now())
-  updatedAt                           DateTime                @default(now())
-  createdById                         String                  @default("00000000-0000-0000-0000-000000000000")
-  updatedById                         String                  @default("00000000-0000-0000-0000-000000000000")
-  tokenFromLogoURI                    String?
-  tokenToLogoURI                      String?
-  User_TradeHistory_createdByIdToUser User                    @relation("TradeHistory_createdByIdToUser", fields: [createdById], references: [id])
-  AgentStrategyAssignment             AgentStrategyAssignment @relation(fields: [strategyAssignmentId], references: [id], onDelete: Cascade)
-  User_TradeHistory_updatedByIdToUser User                    @relation("TradeHistory_updatedByIdToUser", fields: [updatedById], references: [id])
+model Position {
+  id                      String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategyAssignmentId    String                  @db.Uuid
+  openedAt                DateTime                @default(now())
+  closedAt                DateTime?
+  baseTokenAddress        String
+  baseTokenSymbol         String
+  baseTokenDecimals       Int
+  baseTokenLogoURI        String?
+  quoteTokenAddress       String
+  quoteTokenSymbol        String
+  quoteTokenDecimals      Int
+  quoteTokenLogoURI       String?
+  entryPrice              Float?
+  exitPrice               Float?
+  totalBaseAmount         String
+  averageEntryPrice       Float?
+  realizedPnlUsd          Float?
+  totalFeesUsd            Float                   @default(0)
+  status                  String                  @default("open")
+  side                    String
+  metadata                Json?                   @default("{}")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @default(now())
+  userId                  String?
+  AgentStrategyAssignment AgentStrategyAssignment @relation(fields: [strategyAssignmentId], references: [id], onDelete: Cascade)
+  User                    User?                   @relation(fields: [userId], references: [id])
+  Transaction             Transaction[]
 
-  @@index([createdById])
+  @@index([baseTokenAddress])
+  @@index([quoteTokenAddress])
+  @@index([status])
+  @@index([strategyAssignmentId])
+}
+
+model Transaction {
+  id                      String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  strategyAssignmentId    String                  @db.Uuid
+  timestamp               DateTime                @default(now())
+  tokenFromAddress        String
+  tokenFromSymbol         String
+  tokenFromAmount         String
+  tokenFromDecimals       Int
+  tokenFromLogoURI        String?
+  tokenFromPrice          Float?
+  tokenToAddress          String
+  tokenToSymbol           String
+  tokenToAmount           String
+  tokenToDecimals         Int
+  tokenToLogoURI          String?
+  tokenToPrice            Float?
+  feesInUsd               Float                   @default(0)
+  profitLossUsd           Float?
+  profitLossPercentage    Float?
+  status                  String                  @default("open")
+  type                    String
+  side                    String
+  transactionHash         String
+  failureReason           String?
+  metadata                Json?                   @default("{}")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @default(now())
+  userId                  String?
+  positionId              String?                 @db.Uuid
+  Position                Position?               @relation(fields: [positionId], references: [id])
+  AgentStrategyAssignment AgentStrategyAssignment @relation(fields: [strategyAssignmentId], references: [id], onDelete: Cascade)
+  User                    User?                   @relation(fields: [userId], references: [id])
+
   @@index([status])
   @@index([strategyAssignmentId])
   @@index([timestamp])
   @@index([tokenFromAddress])
   @@index([tokenToAddress])
   @@index([transactionHash])
-  @@index([updatedById])
 }
