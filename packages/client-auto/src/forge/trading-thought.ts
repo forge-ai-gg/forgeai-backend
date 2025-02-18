@@ -34,8 +34,11 @@ export const generateTradingThought = async ({
         TRADING_THOUGHT_PROMPT_VARIATIONS[
             Math.floor(Math.random() * TRADING_THOUGHT_PROMPT_VARIATIONS.length)
         ];
-    const context = `# Task: Generate a character-driven initial greeting or activation thought
+    const context = `
+
+    # Task: Generate a character-driven initial greeting or activation thought
 Action: ${action}
+
 ${details ? `Details: ${JSON.stringify(details, null, 2)}` : ""}
 
 ${prompt.instruction}
@@ -43,8 +46,7 @@ ${prompt.instruction}
 Style guidelines:
 ${prompt.style}
 
-IMPORTANT: Your response must be valid JSON. Do not include any newlines or special characters in the text field.
-Respond with a single line of JSON in this exact format:
+IMPORTANT: Your response must be valid JSON. Do not include any newlines or special characters in the text field. Respond with a single line of JSON in this exact format:
 {"text": "your single-line response here"}`;
 
     try {

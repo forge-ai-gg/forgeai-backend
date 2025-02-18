@@ -1,28 +1,68 @@
 import { IAgentRuntime } from "@elizaos/core";
 import { generateRandomThought } from "../forge/random-thoughts";
+import { generateTradingThought } from "../forge/trading-thought";
 import { createMemory } from "../forge/utils";
 import { EnumMemoryType } from "../lib/enums";
-import { TradingEvent, TradingMemoryParams } from "../types/trading-event";
+import { TradingContext } from "../types/trading-context";
+import { TradingEvent } from "../types/trading-event";
 
-export async function recordMemory(params: TradingMemoryParams): Promise<void> {
-    const event: TradingEvent = {
-        type: params.tx ? "TRADE" : "ANALYSIS",
-        data: {
-            marketData: params.marketData,
-            portfolio: params.portfolio,
-            decision: params.decision,
-            tx: params.tx,
-        },
-        timestamp: new Date(),
-        context: {
-            hasOpenPosition: params.portfolio.hasOpenPosition,
-            totalValue: params.portfolio.totalValue,
-        },
-    };
+export async function recordMemory(ctx: TradingContext): Promise<string> {
+    // Now use the cleaned context
+    if (ctx.transactions?.length) {
+        return await createTradeMemory(ctx);
+    }
 
-    const thought = await generateThought(event, params.runtime);
-    await saveMemory(thought, params.runtime);
+    return await createIdleMemory(ctx);
 }
+
+export const createTradeMemory = async (
+    ctx: TradingContext
+): Promise<string> => {
+    const action = `You analyzed the market and observed: ${ctx.logMessage}`;
+    const thought = await generateTradingThought({
+        runtime: ctx.runtime,
+        action,
+        details: ctx.logMessage,
+    });
+
+    await createMemory({
+        runtime: ctx.runtime,
+        message: thought,
+        additionalContent: {
+            type: EnumMemoryType.TRADE,
+            logMessage: ctx.logMessage,
+            transactions: ctx.transactions,
+            portfolio: ctx.portfolio,
+        },
+    });
+
+    return thought;
+};
+
+export const createIdleMemory = async (
+    ctx: TradingContext
+): Promise<string> => {
+    const action = `You analyzed the market and observed: ${ctx.logMessage}`;
+    const thought = await generateRandomThought({
+        runtime: ctx.runtime,
+        action,
+        details: ctx.logMessage,
+    });
+
+    await createMemory({
+        runtime: ctx.runtime,
+        message: thought.text,
+        additionalContent: {
+            type: EnumMemoryType.IDLE,
+            context: {
+                type: "idle",
+                logMessage: ctx.logMessage,
+            },
+        },
+    });
+
+    return thought.text;
+};
 
 export async function recordError(params: {
     runtime: IAgentRuntime;
@@ -47,37 +87,6 @@ export async function recordError(params: {
             type: EnumMemoryType.ERROR,
             error: params.error,
             context: event.context,
-        },
-    });
-}
-
-async function generateThought(
-    event: TradingEvent,
-    runtime: IAgentRuntime
-): Promise<string> {
-    const baseAction =
-        event.type === "TRADE"
-            ? `Executed ${event.data.decision?.type} trade`
-            : `Analyzed market conditions`;
-
-    const thought = await generateRandomThought({
-        runtime,
-        action: baseAction,
-        details: event.context,
-    });
-
-    return thought.text;
-}
-
-async function saveMemory(
-    thought: string,
-    runtime: IAgentRuntime
-): Promise<void> {
-    await createMemory({
-        runtime,
-        message: thought,
-        additionalContent: {
-            type: EnumMemoryType.TRADE,
         },
     });
 }

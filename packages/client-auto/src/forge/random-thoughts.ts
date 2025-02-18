@@ -60,8 +60,6 @@ export const generateRandomThought = async ({
         Respond with a single line of JSON in this exact format:
         {"text": "your single-line response here"}`;
 
-    elizaLogger.info("context:", context);
-
     try {
         const response = await generateMessageResponse({
             runtime,

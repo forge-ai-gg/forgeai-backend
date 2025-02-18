@@ -20,6 +20,7 @@ export enum EnumTradeType {
 export enum EnumMemoryType {
     TRADE = "trade",
     ERROR = "error",
+    IDLE = "idle",
 }
 
 export enum EnumPositionStatus {
