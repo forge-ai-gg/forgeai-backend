@@ -94,7 +94,9 @@ const evaluateRsiStrategy = ({
     const currentRsi = rsiValues[rsiValues.length - 1];
 
     const hasOpenPosition = portfolio.openPositions?.find(
-        (p) => p.baseTokenAddress === pair.from.address
+        (p) =>
+            p.baseTokenAddress === pair.from.address &&
+            p.quoteTokenAddress === pair.to.address
     );
 
     // Calculate proximities

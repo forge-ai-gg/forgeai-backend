@@ -86,7 +86,9 @@ const buildTransactionsSection = (ctx: TradingContext): string => {
 };
 
 const formatTransaction = (t: any, i: number) => `
-${i + 1}. ${t.decision.token.from} -> ${t.decision.token.to}
+${i + 1}. ${t.decision.tokenPair.from.symbol} -> ${
+    t.decision.tokenPair.to.symbol
+}
    Amount: ${t.decision.amount}
    Success: ${t.success}
    ${t.success ? `Hash: ${t.transactionHash}` : `Error: ${t.error?.message}`}`;

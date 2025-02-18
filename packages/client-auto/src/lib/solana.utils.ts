@@ -1,4 +1,5 @@
 import { Connection } from "@solana/web3.js";
+import { Token } from "../types/trading-config";
 import { JUPITER_PROGRAM_ID } from "./constants";
 
 interface TokenBalance {
@@ -113,10 +114,35 @@ const extractTokenSwapAmounts = (transaction: any): SwapDetails => {
  * @param txHash - The transaction hash
  * @returns The swap details
  */
-export const getSwapDetails = async (
-    connection: Connection,
-    txHash: string
-): Promise<SwapDetails | undefined> => {
+export const getSwapDetails = async ({
+    connection,
+    txHash,
+    isPaperTrading,
+    amountToTrade,
+    tokenTo,
+    tokenFrom,
+}: {
+    connection: Connection;
+    txHash: string;
+    isPaperTrading: boolean;
+    amountToTrade: number;
+    tokenTo: Token;
+    tokenFrom: Token;
+}): Promise<SwapDetails | undefined> => {
+    if (isPaperTrading) {
+        return {
+            inputAmount: amountToTrade,
+            outputAmount: amountToTrade,
+            inputToken: tokenFrom.address,
+            outputToken: tokenTo.address,
+            blockHeight: 0,
+            timestamp: new Date().getTime(),
+            status: "success",
+            programId: "11111111111111111111111111111111",
+            isJupiterSwap: true,
+        };
+    }
+
     const tx = await connection.getTransaction(txHash, {
         commitment: "finalized",
         maxSupportedTransactionVersion: 0,
