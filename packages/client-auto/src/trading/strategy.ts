@@ -1,28 +1,38 @@
+import { elizaLogger } from "@elizaos/core";
 import { rsi } from "technicalindicators";
+import { FORCE_CLOSE_POSITION, FORCE_OPEN_POSITION } from "../lib/constants";
 import { formatCurrency } from "../lib/formatters";
 import { TradingContext } from "../types/trading-context";
 import { TradingPair } from "../types/trading-strategy-config";
 import { TokenPairPriceHistory } from "./price-history";
 
 export type TradeEvaluationResult = {
-    shouldTrade: boolean;
+    shouldOpen: boolean;
+    shouldClose: boolean;
     description: string;
+    openProximity: number; // 0-1 representing how close we are to opening
+    closeProximity: number; // 0-1 representing how close we are to closing
 };
 
 export function evaluateStrategy({
     ctx,
     pair,
     index,
+    amount,
 }: {
     ctx: TradingContext;
     pair: TradingPair;
     index: number;
+    amount: number;
 }): TradeEvaluationResult {
     const { priceHistory, portfolio, tradingStrategyConfig } = ctx;
     if (!priceHistory || !portfolio)
         return {
-            shouldTrade: false,
+            shouldOpen: false,
+            shouldClose: false,
             description: "Insufficient data",
+            openProximity: 0,
+            closeProximity: 0,
         };
 
     const tradingPair = tradingStrategyConfig.tradingPairs[index];
@@ -37,11 +47,15 @@ export function evaluateStrategy({
                 ctx,
                 pair: tradingPair,
                 pairPriceHistory,
+                amount,
             });
         default:
             return {
-                shouldTrade: false,
+                shouldOpen: false,
+                shouldClose: false,
                 description: "Unsupported strategy type",
+                openProximity: 0,
+                closeProximity: 0,
             };
     }
 }
@@ -50,19 +64,23 @@ const evaluateRsiStrategy = ({
     ctx,
     pair,
     pairPriceHistory,
+    amount,
 }: {
     ctx: TradingContext;
     pair: TradingPair;
     pairPriceHistory: TokenPairPriceHistory;
+    amount: number;
 }): TradeEvaluationResult => {
-    let shouldTrade = false;
     const { portfolio, tradingStrategyConfig } = ctx;
     if (!portfolio)
         return {
-            shouldTrade: false,
+            shouldOpen: false,
+            shouldClose: false,
             description: "Insufficient data",
+            openProximity: 0,
+            closeProximity: 0,
         };
-    const { overBought, overSold, length } = tradingStrategyConfig.rsiConfig;
+    const { overBought, overSold } = tradingStrategyConfig.rsiConfig;
 
     const currentFromPrice =
         pairPriceHistory.from[pairPriceHistory.from.length - 1].value;
@@ -79,42 +97,146 @@ const evaluateRsiStrategy = ({
         (p) => p.baseTokenAddress === pair.from.address
     );
 
-    // if we have an open position, we should sell if the rsi is overbought
-    if (hasOpenPosition) {
-        shouldTrade = currentRsi > tradingStrategyConfig.rsiConfig.overBought;
-    } else {
-        shouldTrade = currentRsi < tradingStrategyConfig.rsiConfig.overSold;
-    }
+    // Calculate proximities
+    const openProximity = hasOpenPosition
+        ? 0
+        : Math.max(0, Math.min(1, (overSold - currentRsi) / overSold));
+
+    const closeProximity = !hasOpenPosition
+        ? 0
+        : Math.max(
+              0,
+              Math.min(1, (currentRsi - overBought) / (100 - overBought))
+          );
+
+    const shouldClose =
+        (Boolean(hasOpenPosition) && currentRsi > overBought) ||
+        FORCE_CLOSE_POSITION;
+    const shouldOpen =
+        (Boolean(hasOpenPosition) && currentRsi < overSold) ||
+        FORCE_OPEN_POSITION;
+
     return {
-        shouldTrade,
+        shouldOpen,
+        shouldClose,
+        openProximity,
+        closeProximity,
         description: `${pair.from.symbol} (${formatCurrency(
             currentFromPrice
         )}) / ${pair.to.symbol} (${formatCurrency(
             currentToPrice
         )}) - Interval: ${
             tradingStrategyConfig.timeInterval
-        } - RSI: ${currentRsi} - Overbought: ${overBought} - Oversold: ${overSold} - Should Trade: ${shouldTrade}`,
+        } - RSI: ${currentRsi} - Overbought: ${overBought} - Oversold: ${overSold} - Should Open: ${shouldOpen} - Should Close: ${shouldClose} - Open Proximity: ${openProximity.toFixed(
+            2
+        )} - Close Proximity: ${closeProximity.toFixed(2)} - Amount: ${amount}`,
     };
 };
 
-export function calculateTradeAmount(ctx: TradingContext): number {
+export function calculateTradeAmount({
+    ctx,
+    pair,
+}: {
+    ctx: TradingContext;
+    pair: TradingPair;
+}): number {
     const { portfolio, tradingStrategyConfig } = ctx;
-    if (!portfolio) return 0;
+    if (!portfolio) {
+        elizaLogger.info("No portfolio found, returning 0");
+        return 0;
+    }
 
-    const availableBalance = portfolio.walletPortfolioItems?.find(
-        (b) => b.symbol === tradingStrategyConfig.tradingPairs[0].from.symbol
+    const fromSymbol = pair.from.symbol;
+    elizaLogger.info(`Calculating trade amount for ${fromSymbol}`);
+
+    // Get wallet balance for the token we want to trade
+    const walletBalance = portfolio.walletPortfolioItems?.find(
+        (b) => b.symbol === fromSymbol
+    );
+    if (!walletBalance) {
+        elizaLogger.info(
+            `No wallet balance found for ${fromSymbol}, returning 0`
+        );
+        return 0;
+    }
+    elizaLogger.info(
+        `Wallet balance for ${fromSymbol}: amount=${walletBalance.uiAmount}, valueUsd=${walletBalance.valueUsd}, priceUsd=${walletBalance.priceUsd}`
     );
 
-    if (!availableBalance) return 0;
+    // Calculate total portfolio value in USD
+    const totalPortfolioValue =
+        portfolio.walletPortfolioItems?.reduce(
+            (sum, item) => sum + item.valueUsd,
+            0
+        ) ?? 0;
+    elizaLogger.info(`Total portfolio value (USD): ${totalPortfolioValue}`);
 
-    const maxAmount = Math.min(
-        (tradingStrategyConfig.maxPortfolioAllocation /
-            availableBalance.valueUsd) *
-            Number(availableBalance.uiAmount),
-        Number(availableBalance.uiAmount)
+    // Calculate max allocation in USD
+    const maxAllocationUsd =
+        (totalPortfolioValue * tradingStrategyConfig.maxPortfolioAllocation) /
+        100;
+    if (isNaN(maxAllocationUsd)) {
+        elizaLogger.info(
+            `Max allocation calculation resulted in NaN, returning 0`
+        );
+        return 0;
+    }
+    elizaLogger.info(
+        `Max allocation (USD): ${maxAllocationUsd} (${tradingStrategyConfig.maxPortfolioAllocation}% of portfolio)`
     );
 
-    return maxAmount;
+    // Find existing position amount for this token
+    const existingPosition = portfolio.openPositions?.find(
+        (p) => p.baseTokenSymbol === fromSymbol
+    );
+    let existingPositionValueUsd =
+        Number(existingPosition?.totalBaseAmount) ?? 0;
+    if (isNaN(existingPositionValueUsd)) {
+        elizaLogger.info(`Existing position value is NaN, using 0`);
+        existingPositionValueUsd = 0;
+    }
+    elizaLogger.info(
+        `Existing position value (USD): ${existingPositionValueUsd}`
+    );
+
+    // Calculate remaining allocation available in USD
+    const remainingAllocationUsd = Math.max(
+        0,
+        maxAllocationUsd - existingPositionValueUsd
+    );
+    if (isNaN(remainingAllocationUsd)) {
+        elizaLogger.info(
+            `Remaining allocation calculation resulted in NaN, returning 0`
+        );
+        return 0;
+    }
+    elizaLogger.info(`Remaining allocation (USD): ${remainingAllocationUsd}`);
+
+    // Convert USD allocation to token amount
+    const availableTokenAmount =
+        remainingAllocationUsd / walletBalance.priceUsd;
+    if (isNaN(availableTokenAmount)) {
+        elizaLogger.info(
+            `Available token amount calculation resulted in NaN, returning 0`
+        );
+        return 0;
+    }
+    elizaLogger.info(`Available token amount: ${availableTokenAmount}`);
+
+    // Return the smaller of available allocation or wallet balance
+    const finalAmount = Math.min(
+        availableTokenAmount,
+        Number(walletBalance.uiAmount)
+    );
+    if (isNaN(finalAmount)) {
+        elizaLogger.info(
+            `Final amount calculation resulted in NaN, returning 0`
+        );
+        return 0;
+    }
+    elizaLogger.info(`Final trade amount: ${finalAmount}`);
+
+    return finalAmount;
 }
 
 export function generateTradeReason(ctx: TradingContext): string {
@@ -133,20 +255,14 @@ export function calculateConfidence(ctx: TradingContext): number {
     const { priceHistory, portfolio, tradingStrategyConfig } = ctx;
     if (!priceHistory || !portfolio) return 0;
 
-    // const rsi = priceHistory.map((p) => p.from.values);
-    // const currentRsi = rsi[rsi.length - 1];
+    const evaluationResults = tradingStrategyConfig.tradingPairs.map(
+        (pair, index) => evaluateStrategy({ ctx, pair, index, amount: 0 })
+    );
 
-    // if (currentRsi > tradingStrategyConfig.rsiConfig.overBought) {
-    //     return (
-    //         (currentRsi - tradingStrategyConfig.rsiConfig.overBought) /
-    //         (100 - tradingStrategyConfig.rsiConfig.overBought)
-    //     );
-    // } else if (currentRsi < tradingStrategyConfig.rsiConfig.overSold) {
-    //     return (
-    //         (tradingStrategyConfig.rsiConfig.overSold - currentRsi) /
-    //         tradingStrategyConfig.rsiConfig.overSold
-    //     );
-    // }
-
-    return 0;
+    // Return the highest proximity value (whether it's for opening or closing)
+    return Math.max(
+        ...evaluationResults.map((result) =>
+            Math.max(result.openProximity, result.closeProximity)
+        )
+    );
 }

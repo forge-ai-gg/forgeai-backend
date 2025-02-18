@@ -1,10 +1,8 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { buildTradingContextLogMessage } from "./lib/logging";
 import { handleError } from "./trading/error";
-import {
-    evaluateTradeDecisions,
-    executeTradeDecisions,
-} from "./trading/execute";
+import { evaluateTradeDecisions } from "./trading/evaluate";
+import { executeTradeDecisions } from "./trading/execute";
 import { recordMemory } from "./trading/memory";
 import { getPortfolio } from "./trading/portfolio";
 import { getPriceHistory } from "./trading/price-history";

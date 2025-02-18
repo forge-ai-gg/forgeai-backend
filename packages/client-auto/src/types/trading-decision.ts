@@ -1,5 +1,6 @@
 export interface TradeDecision {
-    shouldTrade: boolean;
+    shouldOpen: boolean;
+    shouldClose: boolean;
     type: "OPEN" | "CLOSE";
     amount: number;
     token: {

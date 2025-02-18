@@ -7,18 +7,58 @@ import { getSwapDetails } from "../lib/solana.utils";
 import { TradingContext } from "../types/trading-context";
 import { TradeDecision } from "../types/trading-decision";
 import { executeSolanaTransaction } from "./solana";
-import {
-    calculateConfidence,
-    calculateTradeAmount,
-    evaluateStrategy,
-    generateTradeReason,
-} from "./strategy";
 import { validatePositionSize, validateTradeParameters } from "./validation";
 
 const MAX_RETRIES = 3;
 const BACKOFF_BASE = 1000; // ms
 const DUMMY_TRANSACTION_HASH =
     "0000000000000000000000000000000000000000000000000000000000000000";
+
+export type ExecutionResult = {
+    decision: TradeDecision;
+    transactionHash: string;
+    success: boolean;
+    error?: Error;
+};
+
+export async function executeTradeDecisions(
+    ctx: TradingContext
+): Promise<ExecutionResult[]> {
+    const results: ExecutionResult[] = [];
+
+    for (const decision of ctx.tradeDecisions?.filter(
+        (d) => d.shouldOpen || d.shouldClose
+    ) ?? []) {
+        try {
+            const tx = await executeTradeWithValidation({
+                shouldOpen: decision.shouldOpen,
+                shouldClose: decision.shouldClose,
+                amountToTrade: decision.amount,
+                tokenFrom: decision.token.from,
+                tokenTo: decision.token.to,
+                connection: ctx.connection,
+                solanaAgent: ctx.solanaAgent,
+                strategyAssignmentId: ctx.agentStrategyAssignment.id,
+                isPaperTrading: ctx.isPaperTrading || false,
+            });
+
+            results.push({
+                decision,
+                transactionHash: tx,
+                success: true,
+            });
+        } catch (error) {
+            results.push({
+                decision,
+                transactionHash: "",
+                success: false,
+                error: error as Error,
+            });
+        }
+    }
+
+    return results;
+}
 
 async function executeWithRetry<T>(
     fn: () => Promise<T>,
@@ -71,20 +111,20 @@ async function validateTrade(params: {
 }
 
 async function recordFailedTrade(params: {
-    shouldBuy: boolean;
+    shouldOpen: boolean;
     tokenFrom: any;
     tokenTo: any;
     error: Error;
     strategyAssignmentId: string;
 }) {
-    const { shouldBuy, tokenFrom, tokenTo, error, strategyAssignmentId } =
+    const { shouldOpen, tokenFrom, tokenTo, error, strategyAssignmentId } =
         params;
 
     await prisma.transaction.create({
         data: {
-            side: shouldBuy ? "BUY" : "SELL",
+            side: shouldOpen ? "BUY" : "SELL",
             status: EnumTradeStatus.FAILED,
-            type: shouldBuy ? EnumTradeType.BUY : EnumTradeType.SELL,
+            type: shouldOpen ? EnumTradeType.BUY : EnumTradeType.SELL,
             timestamp: new Date(),
             tokenFromAddress: tokenFrom.address,
             tokenToAddress: tokenTo.address,
@@ -108,7 +148,8 @@ async function recordFailedTrade(params: {
 }
 
 async function recordSuccessfulTrade(params: {
-    shouldBuy: boolean;
+    shouldOpen: boolean;
+    shouldClose: boolean;
     tokenFrom: any;
     tokenTo: any;
     tx: string;
@@ -116,7 +157,8 @@ async function recordSuccessfulTrade(params: {
     strategyAssignmentId: string;
 }) {
     const {
-        shouldBuy,
+        shouldOpen,
+        shouldClose,
         tokenFrom,
         tokenTo,
         tx,
@@ -126,9 +168,9 @@ async function recordSuccessfulTrade(params: {
 
     return await prisma.transaction.create({
         data: {
-            side: shouldBuy ? "BUY" : "SELL",
+            side: shouldOpen ? "BUY" : "SELL",
             status: EnumTradeStatus.OPEN,
-            type: shouldBuy ? EnumTradeType.BUY : EnumTradeType.SELL,
+            type: shouldOpen ? EnumTradeType.BUY : EnumTradeType.SELL,
             timestamp: new Date(),
             tokenFromAddress: tokenFrom.address,
             tokenToAddress: tokenTo.address,
@@ -156,7 +198,8 @@ async function recordSuccessfulTrade(params: {
 }
 
 export async function executeTradeWithValidation(params: {
-    shouldBuy: boolean;
+    shouldOpen: boolean;
+    shouldClose: boolean;
     amountToTrade: number;
     tokenFrom: any;
     tokenTo: any;
@@ -166,7 +209,8 @@ export async function executeTradeWithValidation(params: {
     isPaperTrading: boolean;
 }): Promise<string> {
     const {
-        shouldBuy,
+        shouldOpen,
+        shouldClose,
         amountToTrade,
         tokenFrom,
         tokenTo,
@@ -215,7 +259,8 @@ export async function executeTradeWithValidation(params: {
         }
 
         await recordSuccessfulTrade({
-            shouldBuy,
+            shouldOpen,
+            shouldClose,
             tokenFrom,
             tokenTo,
             tx,
@@ -225,9 +270,9 @@ export async function executeTradeWithValidation(params: {
 
         return tx;
     } catch (e) {
-        elizaLogger.error(`Trade execution error: ${JSON.stringify(e)}`);
+        elizaLogger.error(`Trade execution error: ${e.message}`);
         await recordFailedTrade({
-            shouldBuy,
+            shouldOpen,
             tokenFrom,
             tokenTo,
             error: e as Error,
@@ -248,78 +293,4 @@ export async function executeTrade(
         amount: decision.amount,
         wallet: ctx.publicKey,
     });
-}
-
-export async function evaluateTradeDecisions(
-    ctx: TradingContext
-): Promise<TradeDecision[]> {
-    const { priceHistory, portfolio, tradingStrategyConfig } = ctx;
-    if (!priceHistory || !portfolio) throw new Error("Missing required data");
-
-    const tradeDecisions: TradeDecision[] =
-        tradingStrategyConfig.tradingPairs.map((pair, index) => {
-            const { shouldTrade, description } = evaluateStrategy({
-                ctx,
-                pair,
-                index,
-            });
-            return {
-                shouldTrade,
-                type: shouldTrade ? "OPEN" : "CLOSE",
-                token: {
-                    from: pair.from.address,
-                    to: pair.to.address,
-                },
-                amount: calculateTradeAmount(ctx),
-                reason: generateTradeReason(ctx),
-                confidence: calculateConfidence(ctx),
-                description,
-            };
-        });
-
-    return tradeDecisions;
-}
-
-export type ExecutionResult = {
-    decision: TradeDecision;
-    transactionHash: string;
-    success: boolean;
-    error?: Error;
-};
-
-export async function executeTradeDecisions(
-    ctx: TradingContext
-): Promise<ExecutionResult[]> {
-    const results: ExecutionResult[] = [];
-
-    for (const decision of ctx.tradeDecisions?.filter((d) => d.shouldTrade) ??
-        []) {
-        try {
-            const tx = await executeTradeWithValidation({
-                shouldBuy: decision.type === "OPEN",
-                amountToTrade: decision.amount,
-                tokenFrom: decision.token.from,
-                tokenTo: decision.token.to,
-                connection: ctx.connection,
-                solanaAgent: ctx.solanaAgent,
-                strategyAssignmentId: ctx.agentStrategyAssignment.id,
-                isPaperTrading: ctx.isPaperTrading || false,
-            });
-
-            results.push({
-                decision,
-                transactionHash: tx,
-                success: true,
-            });
-        } catch (error) {
-            results.push({
-                decision,
-                transactionHash: "",
-                success: false,
-                error: error as Error,
-            });
-        }
-    }
-
-    return results;
 }

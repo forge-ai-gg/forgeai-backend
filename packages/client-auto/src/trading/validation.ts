@@ -44,19 +44,19 @@ export const validateTradeParameters = async (params: {
         };
     }
 
-    if (tokenLiquidityUsd < tradingLimits.minLiquidityUsd) {
-        return {
-            isValid: false,
-            reason: `Token liquidity ($${tokenLiquidityUsd}) below minimum ($${tradingLimits.minLiquidityUsd})`,
-        };
-    }
+    // if (tokenLiquidityUsd < tradingLimits.minLiquidityUsd) {
+    //     return {
+    //         isValid: false,
+    //         reason: `Token liquidity ($${tokenLiquidityUsd}) below minimum ($${tradingLimits.minLiquidityUsd})`,
+    //     };
+    // }
 
-    if (tokenDailyVolumeUsd < tradingLimits.minDailyVolumeUsd) {
-        return {
-            isValid: false,
-            reason: `24h volume ($${tokenDailyVolumeUsd}) below minimum ($${tradingLimits.minDailyVolumeUsd})`,
-        };
-    }
+    // if (tokenDailyVolumeUsd < tradingLimits.minDailyVolumeUsd) {
+    //     return {
+    //         isValid: false,
+    //         reason: `24h volume ($${tokenDailyVolumeUsd}) below minimum ($${tradingLimits.minDailyVolumeUsd})`,
+    //     };
+    // }
 
     if (expectedSlippage > tradingLimits.maxSlippagePercent) {
         return {

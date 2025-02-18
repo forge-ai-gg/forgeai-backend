@@ -1,78 +1,95 @@
 import { TradingContext } from "../types/trading-context";
 
 export const buildTradingContextLogMessage = (ctx: TradingContext): string => {
-    const tradingContextMessage = `
+    const sections = [
+        buildHeaderSection(ctx),
+        buildPortfolioSection(ctx),
+        buildOpenPositionsSection(ctx),
+        buildTradingPairsSection(ctx),
+        buildTradeDecisionsSection(ctx),
+        ctx.transactions ? buildTransactionsSection(ctx) : "",
+        buildMemorySection(ctx),
+    ];
+
+    return sections.join("\n--------------------------------\n");
+};
+
+const buildHeaderSection = (ctx: TradingContext): string => `
 TRADING CONTEXT:
 --------------------------------
 Agent: ${ctx.runtime.character.name}
 AgentId: ${ctx.runtime.character.id}
 Cycle: ${ctx.cycle}
 Wallet: ${ctx.publicKey.toString()}
-Strategy: ${ctx.agentTradingStrategy.title} (${ctx.agentStrategyAssignment.id})
---------------------------------
-PORTFOLIO:
-${
-    ctx.portfolio?.walletPortfolioItems?.length
+Strategy: ${ctx.agentTradingStrategy.title} (${
+    ctx.agentStrategyAssignment.id
+})`;
+
+const buildPortfolioSection = (ctx: TradingContext): string => {
+    const portfolioItems = ctx.portfolio?.walletPortfolioItems?.length
         ? ctx.portfolio.walletPortfolioItems
-              .map((item) => `${item.symbol}: ${item.uiAmount}`)
+              .map((item) => formatPortfolioItem(item))
               .join("\n")
-        : "None"
-}
---------------------------------
-OPEN POSITIONS:
-${
-    ctx.portfolio?.openPositions?.length
+        : "None";
+
+    return `PORTFOLIO:\n${portfolioItems}`;
+};
+
+const formatPortfolioItem = (item: any) =>
+    `${item.symbol}: ${item.uiAmount} @ $${
+        item.priceUsd?.toFixed(4) || 0
+    } = $${(item.valueUsd || 0).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })}`;
+
+const buildOpenPositionsSection = (ctx: TradingContext): string => {
+    const positions = ctx.portfolio?.openPositions?.length
         ? ctx.portfolio.openPositions
-              .map(
-                  (pos) =>
-                      `${pos.baseTokenSymbol}->${pos.quoteTokenSymbol}: Amount: ${pos.totalBaseAmount}, Entry: ${pos.entryPrice}`
-              )
+              .map((pos) => formatPosition(pos))
               .join("\n")
-        : "None"
-}
---------------------------------
-TRADING PAIRS: 
-${ctx.tradingStrategyConfig.tradingPairs
-    .map((pair, index) => {
-        return `${index + 1}. ${pair.to.symbol}/${pair.from.symbol}`;
-    })
-    .join("\n")}
---------------------------------
-TRADE DECISIONS:
-${
-    ctx.tradeDecisions.length
+        : "None";
+
+    return `OPEN POSITIONS:\n${positions}`;
+};
+
+const formatPosition = (pos: any) =>
+    `${pos.baseTokenSymbol}->${pos.quoteTokenSymbol}: Amount: ${pos.totalBaseAmount}, Entry: ${pos.entryPrice}`;
+
+const buildTradingPairsSection = (ctx: TradingContext): string => {
+    const pairs = ctx.tradingStrategyConfig.tradingPairs
+        .map(
+            (pair, index) =>
+                `${index + 1}. ${pair.to.symbol}/${pair.from.symbol}`
+        )
+        .join("\n");
+
+    return `TRADING PAIRS:\n${pairs}`;
+};
+
+const buildTradeDecisionsSection = (ctx: TradingContext): string => {
+    const decisions = ctx.tradeDecisions.length
         ? ctx.tradeDecisions
-              .map((decision, index) => {
-                  return `${index + 1}. ${decision.description}`;
-              })
+              .map((decision, index) => `${index + 1}. ${decision.description}`)
               .join("\n")
-        : "None"
-}
---------------------------------
-${
-    ctx.transactions
-        ? `TRANSACTIONS:
-${
-    ctx.transactions.length
-        ? ctx.transactions
-              .map(
-                  (t, i) => `
+        : "None";
+
+    return `TRADE DECISIONS:\n${decisions}`;
+};
+
+const buildTransactionsSection = (ctx: TradingContext): string => {
+    const transactions = ctx.transactions.length
+        ? ctx.transactions.map((t, i) => formatTransaction(t, i)).join("\n")
+        : "None";
+
+    return `TRANSACTIONS:\n${transactions}`;
+};
+
+const formatTransaction = (t: any, i: number) => `
 ${i + 1}. ${t.decision.token.from} -> ${t.decision.token.to}
    Amount: ${t.decision.amount}
    Success: ${t.success}
-   ${t.success ? `Hash: ${t.transactionHash}` : `Error: ${t.error?.message}`}
-`
-              )
-              .join("\n")
-        : "None"
-}
---------------------------------
-MEMORY:
-${ctx.memory ? JSON.stringify(ctx.memory, null, 2) : "None"}
---------------------------------
-`
-        : ""
-}`;
+   ${t.success ? `Hash: ${t.transactionHash}` : `Error: ${t.error?.message}`}`;
 
-    return tradingContextMessage;
-};
+const buildMemorySection = (ctx: TradingContext): string =>
+    `MEMORY:\n${ctx.memory ? JSON.stringify(ctx.memory, null, 2) : "None"}`;
