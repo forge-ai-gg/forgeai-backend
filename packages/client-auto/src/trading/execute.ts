@@ -1,12 +1,13 @@
 import { elizaLogger } from "@elizaos/core";
+import { Position } from "@prisma/client";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { SolanaAgentKit } from "solana-agent-kit";
 import { EnumTradeStatus, EnumTradeType } from "../lib/enums";
 import { prisma } from "../lib/prisma";
 import { getSwapDetails } from "../lib/solana.utils";
+import { Token } from "../types/trading-config";
 import { TradingContext } from "../types/trading-context";
 import { TradeDecision } from "../types/trading-decision";
-import { executeSolanaTransaction } from "./solana";
 import { validatePositionSize, validateTradeParameters } from "./validation";
 
 const MAX_RETRIES = 3;
@@ -26,20 +27,33 @@ export async function executeTradeDecisions(
 ): Promise<ExecutionResult[]> {
     const results: ExecutionResult[] = [];
 
-    for (const decision of ctx.tradeDecisions?.filter(
+    const tradesDecisionsToExecute = ctx.tradeDecisions?.filter(
         (d) => d.shouldOpen || d.shouldClose
-    ) ?? []) {
+    );
+
+    elizaLogger.info(`Executing ${tradesDecisionsToExecute?.length} trades`);
+
+    // todo - consider serial vs parallel execution
+    for (const decision of tradesDecisionsToExecute) {
+        elizaLogger.info(
+            `Executing trade ${decision.description} (${decision.amount})`
+        );
+        elizaLogger.info(JSON.stringify(decision, null, 2));
+        let i = 0;
         try {
+            elizaLogger.log(
+                `Executing trade ${i} of ${tradesDecisionsToExecute?.length}: ${decision.description}`
+            );
             const tx = await executeTradeWithValidation({
                 shouldOpen: decision.shouldOpen,
                 shouldClose: decision.shouldClose,
                 amountToTrade: decision.amount,
-                tokenFrom: decision.token.from,
-                tokenTo: decision.token.to,
+                tokenFrom: decision.tokenPair.from,
+                tokenTo: decision.tokenPair.to,
                 connection: ctx.connection,
                 solanaAgent: ctx.solanaAgent,
                 strategyAssignmentId: ctx.agentStrategyAssignment.id,
-                isPaperTrading: ctx.isPaperTrading || false,
+                isPaperTrading: ctx.isPaperTrading,
             });
 
             results.push({
@@ -48,6 +62,9 @@ export async function executeTradeDecisions(
                 success: true,
             });
         } catch (error) {
+            elizaLogger.error(
+                `Error executing trade ${i} of ${tradesDecisionsToExecute?.length}: ${error.message}`
+            );
             results.push({
                 decision,
                 transactionHash: "",
@@ -55,6 +72,7 @@ export async function executeTradeDecisions(
                 error: error as Error,
             });
         }
+        i++;
     }
 
     return results;
@@ -110,103 +128,17 @@ async function validateTrade(params: {
     }
 }
 
-async function recordFailedTrade(params: {
-    shouldOpen: boolean;
-    tokenFrom: any;
-    tokenTo: any;
-    error: Error;
-    strategyAssignmentId: string;
-}) {
-    const { shouldOpen, tokenFrom, tokenTo, error, strategyAssignmentId } =
-        params;
-
-    await prisma.transaction.create({
-        data: {
-            side: shouldOpen ? "BUY" : "SELL",
-            status: EnumTradeStatus.FAILED,
-            type: shouldOpen ? EnumTradeType.BUY : EnumTradeType.SELL,
-            timestamp: new Date(),
-            tokenFromAddress: tokenFrom.address,
-            tokenToAddress: tokenTo.address,
-            tokenFromSymbol: tokenFrom.symbol,
-            tokenToSymbol: tokenTo.symbol,
-            tokenFromAmount: "0",
-            tokenToAmount: "0",
-            tokenFromDecimals: tokenFrom.decimals,
-            tokenToDecimals: tokenTo.decimals,
-            tokenFromLogoURI: tokenFrom.logoURI,
-            tokenToLogoURI: tokenTo.logoURI,
-            feesInUsd: 0,
-            failureReason: error.message,
-            metadata: { error: error.stack },
-            AgentStrategyAssignment: {
-                connect: { id: strategyAssignmentId },
-            },
-            transactionHash: DUMMY_TRANSACTION_HASH,
-        },
-    });
-}
-
-async function recordSuccessfulTrade(params: {
-    shouldOpen: boolean;
-    shouldClose: boolean;
-    tokenFrom: any;
-    tokenTo: any;
-    tx: string;
-    swapDetails: any;
-    strategyAssignmentId: string;
-}) {
-    const {
-        shouldOpen,
-        shouldClose,
-        tokenFrom,
-        tokenTo,
-        tx,
-        swapDetails,
-        strategyAssignmentId,
-    } = params;
-
-    return await prisma.transaction.create({
-        data: {
-            side: shouldOpen ? "BUY" : "SELL",
-            status: EnumTradeStatus.OPEN,
-            type: shouldOpen ? EnumTradeType.BUY : EnumTradeType.SELL,
-            timestamp: new Date(),
-            tokenFromAddress: tokenFrom.address,
-            tokenToAddress: tokenTo.address,
-            tokenFromSymbol: tokenFrom.symbol,
-            tokenToSymbol: tokenTo.symbol,
-            tokenFromAmount: swapDetails?.inputAmount.toString(),
-            tokenToAmount: swapDetails?.outputAmount.toString(),
-            tokenFromDecimals: tokenFrom.decimals,
-            tokenToDecimals: tokenTo.decimals,
-            tokenFromLogoURI: tokenFrom.logoURI,
-            tokenToLogoURI: tokenTo.logoURI,
-            feesInUsd: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            profitLossUsd: Math.random() * 100, // TODO: Calculate actual P/L
-            profitLossPercentage: Math.random() * 100,
-            transactionHash: tx,
-            failureReason: null,
-            metadata: {},
-            AgentStrategyAssignment: {
-                connect: { id: strategyAssignmentId },
-            },
-        },
-    });
-}
-
 export async function executeTradeWithValidation(params: {
     shouldOpen: boolean;
     shouldClose: boolean;
     amountToTrade: number;
-    tokenFrom: any;
-    tokenTo: any;
+    tokenFrom: Token;
+    tokenTo: Token;
     connection: Connection;
     solanaAgent: SolanaAgentKit;
     strategyAssignmentId: string;
     isPaperTrading: boolean;
+    currentPosition?: Position;
 }): Promise<string> {
     const {
         shouldOpen,
@@ -250,6 +182,7 @@ export async function executeTradeWithValidation(params: {
         }
 
         const swapDetails = await getSwapDetails(connection, tx);
+        elizaLogger.info(`Swap details: ${JSON.stringify(swapDetails)}`);
 
         if (
             !isPaperTrading &&
@@ -258,7 +191,7 @@ export async function executeTradeWithValidation(params: {
             throw new Error("Invalid swap details");
         }
 
-        await recordSuccessfulTrade({
+        await recordSuccessfulTx({
             shouldOpen,
             shouldClose,
             tokenFrom,
@@ -271,7 +204,7 @@ export async function executeTradeWithValidation(params: {
         return tx;
     } catch (e) {
         elizaLogger.error(`Trade execution error: ${e.message}`);
-        await recordFailedTrade({
+        await recordFailedTx({
             shouldOpen,
             tokenFrom,
             tokenTo,
@@ -282,15 +215,91 @@ export async function executeTradeWithValidation(params: {
     }
 }
 
-export async function executeTrade(
-    ctx: TradingContext,
-    decision: TradeDecision
-): Promise<string> {
-    return await executeSolanaTransaction({
-        connection: ctx.connection,
-        fromToken: decision.token.from,
-        toToken: decision.token.to,
-        amount: decision.amount,
-        wallet: ctx.publicKey,
+async function recordFailedTx(params: {
+    shouldOpen: boolean;
+    tokenFrom: Token;
+    tokenTo: Token;
+    error: Error;
+    strategyAssignmentId: string;
+    currentPosition?: Position;
+}) {
+    const { shouldOpen, tokenFrom, tokenTo, error, strategyAssignmentId } =
+        params;
+
+    await prisma.transaction.create({
+        data: {
+            side: shouldOpen ? "BUY" : "SELL",
+            status: EnumTradeStatus.FAILED,
+            type: shouldOpen ? EnumTradeType.BUY : EnumTradeType.SELL,
+            timestamp: new Date(),
+            tokenFromAddress: tokenFrom.address,
+            tokenToAddress: tokenTo.address,
+            tokenFromSymbol: tokenFrom.symbol,
+            tokenToSymbol: tokenTo.symbol,
+            tokenFromAmount: "0",
+            tokenToAmount: "0",
+            tokenFromDecimals: tokenFrom.decimals,
+            tokenToDecimals: tokenTo.decimals,
+            tokenFromLogoURI: tokenFrom.logoURI,
+            tokenToLogoURI: tokenTo.logoURI,
+            feesInUsd: 0,
+            failureReason: error.message,
+            metadata: { error: error.stack },
+            AgentStrategyAssignment: {
+                connect: { id: strategyAssignmentId },
+            },
+            transactionHash: DUMMY_TRANSACTION_HASH,
+        },
+    });
+}
+
+async function recordSuccessfulTx(params: {
+    shouldOpen: boolean;
+    shouldClose: boolean;
+    tokenFrom: Token;
+    tokenTo: Token;
+    tx: string;
+    swapDetails: any;
+    strategyAssignmentId: string;
+    currentPosition?: Position;
+}) {
+    const {
+        shouldOpen,
+        shouldClose,
+        tokenFrom,
+        tokenTo,
+        tx,
+        swapDetails,
+        strategyAssignmentId,
+    } = params;
+
+    return await prisma.transaction.create({
+        data: {
+            side: shouldOpen ? "BUY" : "SELL",
+            status: EnumTradeStatus.OPEN,
+            type: shouldOpen ? EnumTradeType.BUY : EnumTradeType.SELL,
+            timestamp: new Date(),
+            tokenFromAddress: tokenFrom.address,
+            tokenToAddress: tokenTo.address,
+            tokenFromSymbol: tokenFrom.symbol,
+            tokenToSymbol: tokenTo.symbol,
+            tokenFromAmount: swapDetails?.inputAmount.toString(),
+            tokenToAmount: swapDetails?.outputAmount.toString(),
+            tokenFromDecimals: tokenFrom.decimals,
+            tokenToDecimals: tokenTo.decimals,
+            tokenFromLogoURI: tokenFrom.logoURI,
+            tokenToLogoURI: tokenTo.logoURI,
+            feesInUsd: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            profitLossUsd: Math.random() * 100, // TODO: Calculate actual P/L
+            profitLossPercentage: Math.random() * 100,
+            transactionHash: tx,
+            failureReason: null,
+            metadata: {},
+            AgentStrategyAssignment: {
+                connect: { id: strategyAssignmentId },
+            },
+        },
     });
 }

@@ -23,7 +23,7 @@ export async function getPriceHistory(
 
     // fetch the price history for each token in the pair and return them all in a big array
     const tokenPairPriceHistory = await Promise.all(
-        tradingStrategyConfig.tradingPairs.map(async (pair) => {
+        tradingStrategyConfig.tokenPairs.map(async (pair) => {
             const [fromPrices, toPrices] = await Promise.all([
                 fetchTokenPriceHistory({
                     tokenAddress: pair.from.address,

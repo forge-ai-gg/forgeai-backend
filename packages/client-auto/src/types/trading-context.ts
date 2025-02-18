@@ -3,6 +3,7 @@ import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
 import { Connection } from "@solana/web3.js";
 import { SolanaAgentKit } from "solana-agent-kit";
 import { config } from "../lib/config";
+import { FORCE_PAPER_TRADING } from "../lib/constants";
 import { getAgentWalletDetails } from "../lib/get-character-details";
 import { prisma } from "../lib/prisma";
 import { ExecutionResult } from "../trading/execute";
@@ -93,6 +94,9 @@ export async function initializeTradingContext({
             privateKey,
             publicKey,
             solanaAgent,
+            // handle the case where the trading strategy is a paper trading strategy
+            isPaperTrading:
+                agentStrategyAssignment.isPaperTrading || FORCE_PAPER_TRADING,
         };
 
         return ctx;

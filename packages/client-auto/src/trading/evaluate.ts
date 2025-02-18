@@ -14,7 +14,7 @@ export async function evaluateTradeDecisions(
     if (!priceHistory || !portfolio) throw new Error("Missing required data");
 
     const tradeDecisions: TradeDecision[] =
-        tradingStrategyConfig.tradingPairs.map((pair, index) => {
+        tradingStrategyConfig.tokenPairs.map((pair, index) => {
             const amount = calculateTradeAmount({ ctx, pair });
             const { shouldOpen, shouldClose, description } = evaluateStrategy({
                 ctx,
@@ -26,9 +26,9 @@ export async function evaluateTradeDecisions(
                 shouldOpen,
                 shouldClose,
                 type: shouldOpen ? "OPEN" : "CLOSE",
-                token: {
-                    from: pair.from.address,
-                    to: pair.to.address,
+                tokenPair: {
+                    from: shouldOpen ? pair.from : pair.to,
+                    to: shouldOpen ? pair.to : pair.from,
                 },
                 amount,
                 reason: generateTradeReason(ctx),

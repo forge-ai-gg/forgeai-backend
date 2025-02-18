@@ -15,7 +15,7 @@ type RSIConfig = {
     overSold: number;
 };
 
-export type TradingPair = {
+export type TokenPair = {
     from: Token;
     to: Token;
 };
@@ -24,7 +24,7 @@ export type TradingPair = {
 export type TradingStrategyConfig = {
     title: string; // a title for the strategy - rsi
     type: EnumStrategyType; // the type of the strategy
-    tradingPairs: TradingPair[]; // a list of trading pairs to trade
+    tokenPairs: TokenPair[]; // a list of trading pairs to trade
     timeInterval: TimeInterval; // the time interval to trade
     maxPortfolioAllocation: number; // the maximum portfolio allocation for the strategy as a percentage from 0 to 100
     rsiConfig?: RSIConfig; // the configuration for the rsi strategy

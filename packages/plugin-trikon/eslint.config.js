@@ -1,6 +1,6 @@
-import globals from "globals";
-import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+import globals from "globals";
 
 export default [
     {
@@ -8,22 +8,26 @@ export default [
         languageOptions: {
             parser: tsParser,
             globals: {
-                ...globals.node
+                ...globals.node,
             },
             parserOptions: {
-                project: "./tsconfig.json"
-            }
+                project: "./tsconfig.json",
+            },
         },
         plugins: {
-            "@typescript-eslint": tsPlugin
+            "@typescript-eslint": tsPlugin,
         },
         rules: {
             "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-implicit-any": "warn",
             "@typescript-eslint/explicit-function-return-type": "off",
-            "@typescript-eslint/no-unused-vars": ["warn", {
-                "argsIgnorePattern": "^_",
-                "varsIgnorePattern": "^_"
-            }]
-        }
-    }
+            "@typescript-eslint/no-unused-vars": [
+                "warn",
+                {
+                    argsIgnorePattern: "^_",
+                    varsIgnorePattern: "^_",
+                },
+            ],
+        },
+    },
 ];

@@ -50,14 +50,14 @@ const buildOpenPositionsSection = (ctx: TradingContext): string => {
               .join("\n")
         : "None";
 
-    return `OPEN POSITIONS:\n${positions}`;
+    return `OPEN POSITIONS BEFORE:\n${positions}`;
 };
 
 const formatPosition = (pos: any) =>
     `${pos.baseTokenSymbol}->${pos.quoteTokenSymbol}: Amount: ${pos.totalBaseAmount}, Entry: ${pos.entryPrice}`;
 
 const buildTradingPairsSection = (ctx: TradingContext): string => {
-    const pairs = ctx.tradingStrategyConfig.tradingPairs
+    const pairs = ctx.tradingStrategyConfig.tokenPairs
         .map(
             (pair, index) =>
                 `${index + 1}. ${pair.to.symbol}/${pair.from.symbol}`

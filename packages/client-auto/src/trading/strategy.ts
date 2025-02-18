@@ -1,9 +1,9 @@
 import { elizaLogger } from "@elizaos/core";
 import { rsi } from "technicalindicators";
 import { FORCE_CLOSE_POSITION, FORCE_OPEN_POSITION } from "../lib/constants";
-import { formatCurrency } from "../lib/formatters";
+import { formatCurrency, formatNumber } from "../lib/formatters";
 import { TradingContext } from "../types/trading-context";
-import { TradingPair } from "../types/trading-strategy-config";
+import { TokenPair } from "../types/trading-strategy-config";
 import { TokenPairPriceHistory } from "./price-history";
 
 export type TradeEvaluationResult = {
@@ -21,7 +21,7 @@ export function evaluateStrategy({
     amount,
 }: {
     ctx: TradingContext;
-    pair: TradingPair;
+    pair: TokenPair;
     index: number;
     amount: number;
 }): TradeEvaluationResult {
@@ -35,7 +35,7 @@ export function evaluateStrategy({
             closeProximity: 0,
         };
 
-    const tradingPair = tradingStrategyConfig.tradingPairs[index];
+    const tradingPair = tradingStrategyConfig.tokenPairs[index];
     const pairPriceHistory = priceHistory[index];
 
     // get the type of the trading strategy that is used to branch logic to determine the strategy to use
@@ -67,7 +67,7 @@ const evaluateRsiStrategy = ({
     amount,
 }: {
     ctx: TradingContext;
-    pair: TradingPair;
+    pair: TokenPair;
     pairPriceHistory: TokenPairPriceHistory;
     amount: number;
 }): TradeEvaluationResult => {
@@ -138,7 +138,7 @@ export function calculateTradeAmount({
     pair,
 }: {
     ctx: TradingContext;
-    pair: TradingPair;
+    pair: TokenPair;
 }): number {
     const { portfolio, tradingStrategyConfig } = ctx;
     if (!portfolio) {
@@ -210,7 +210,9 @@ export function calculateTradeAmount({
         );
         return 0;
     }
-    elizaLogger.info(`Remaining allocation (USD): ${remainingAllocationUsd}`);
+    elizaLogger.info(
+        `Remaining allocation (USD): ${formatCurrency(remainingAllocationUsd)}`
+    );
 
     // Convert USD allocation to token amount
     const availableTokenAmount =
@@ -221,7 +223,11 @@ export function calculateTradeAmount({
         );
         return 0;
     }
-    elizaLogger.info(`Available token amount: ${availableTokenAmount}`);
+    elizaLogger.info(
+        `Available token amount: ${formatNumber(availableTokenAmount, {
+            maximumFractionDigits: 6,
+        })}`
+    );
 
     // Return the smaller of available allocation or wallet balance
     const finalAmount = Math.min(
@@ -230,13 +236,21 @@ export function calculateTradeAmount({
     );
     if (isNaN(finalAmount)) {
         elizaLogger.info(
-            `Final amount calculation resulted in NaN, returning 0`
+            `Preliminary amount calculation resulted in NaN, returning 0`
         );
         return 0;
     }
-    elizaLogger.info(`Final trade amount: ${finalAmount}`);
+    elizaLogger.info(
+        `Preliminary trade amount: ${formatCurrency(finalAmount)}`
+    );
 
-    return finalAmount;
+    // trim the amount based on the number of decimals
+    const decimals = pair.from.decimals;
+    const trimmedAmount =
+        Math.floor(finalAmount * 10 ** decimals) / 10 ** decimals;
+    elizaLogger.info(`Trimmed trade amount: ${formatCurrency(trimmedAmount)}`);
+
+    return trimmedAmount;
 }
 
 export function generateTradeReason(ctx: TradingContext): string {
@@ -255,7 +269,7 @@ export function calculateConfidence(ctx: TradingContext): number {
     const { priceHistory, portfolio, tradingStrategyConfig } = ctx;
     if (!priceHistory || !portfolio) return 0;
 
-    const evaluationResults = tradingStrategyConfig.tradingPairs.map(
+    const evaluationResults = tradingStrategyConfig.tokenPairs.map(
         (pair, index) => evaluateStrategy({ ctx, pair, index, amount: 0 })
     );
 
