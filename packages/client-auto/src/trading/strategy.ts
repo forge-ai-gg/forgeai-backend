@@ -1,6 +1,7 @@
 import { elizaLogger } from "@elizaos/core";
 import { rsi } from "technicalindicators";
 import { FORCE_CLOSE_POSITION, FORCE_OPEN_POSITION } from "../lib/constants";
+import { EnumStrategyType } from "../lib/enums";
 import { formatCurrency, formatNumber } from "../lib/formatters";
 import { TradingContext } from "../types/trading-context";
 import { TokenPair } from "../types/trading-strategy-config";
@@ -42,7 +43,7 @@ export function evaluateStrategy({
     const { type } = tradingStrategyConfig;
 
     switch (type) {
-        case "rsi":
+        case EnumStrategyType.RSI:
             return evaluateRsiStrategy({
                 ctx,
                 pair: tradingPair,
@@ -70,16 +71,6 @@ const evaluateRsiStrategy = ({
     amount: number;
 }): TradeEvaluationResult => {
     const { portfolio, tradingStrategyConfig } = ctx;
-    if (!portfolio)
-        return {
-            shouldOpen: false,
-            shouldClose: false,
-            description: "Insufficient data",
-            openProximity: 0,
-            closeProximity: 0,
-            hasOpenPosition: false,
-        };
-
     const { overBought, overSold } = tradingStrategyConfig.rsiConfig;
 
     const currentFromPrice =
@@ -97,19 +88,18 @@ const evaluateRsiStrategy = ({
     });
     const currentRsi = rsiValues[rsiValues.length - 1];
 
+    // check if this agent has an open position for this pair
     const openPosition = portfolio.openPositions?.find(
         (p) =>
-            p.baseTokenAddress === pair.from.address &&
-            p.quoteTokenAddress === pair.to.address
+            p.baseTokenAddress === pair.to.address &&
+            p.quoteTokenAddress === pair.from.address
     );
-
     const hasOpenPosition = Boolean(openPosition);
 
-    // Calculate proximities
+    // Calculate proximities to opening or closing a position
     const openProximity = hasOpenPosition
         ? 0
         : Math.max(0, Math.min(1, (overSold - currentRsi) / overSold));
-
     const closeProximity = !hasOpenPosition
         ? 0
         : Math.max(
@@ -118,11 +108,9 @@ const evaluateRsiStrategy = ({
           );
 
     const shouldClose =
-        (Boolean(hasOpenPosition) && currentRsi > overBought) ||
-        FORCE_CLOSE_POSITION;
+        (hasOpenPosition && currentRsi > overBought) || FORCE_CLOSE_POSITION;
     const shouldOpen =
-        (Boolean(hasOpenPosition) && currentRsi < overSold) ||
-        FORCE_OPEN_POSITION;
+        (!hasOpenPosition && currentRsi < overSold) || FORCE_OPEN_POSITION;
 
     return {
         shouldOpen,
@@ -138,7 +126,9 @@ const evaluateRsiStrategy = ({
             tradingStrategyConfig.timeInterval
         } - RSI: ${currentRsi} - Overbought: ${overBought} - Oversold: ${overSold} - Should Open: ${shouldOpen} - Should Close: ${shouldClose} - Open Proximity: ${openProximity.toFixed(
             2
-        )} - Close Proximity: ${closeProximity.toFixed(2)} - Amount: ${amount}`,
+        )} - Close Proximity: ${closeProximity.toFixed(
+            2
+        )} - Amount: ${amount} - hasOpenPosition: ${hasOpenPosition}`,
     };
 };
 

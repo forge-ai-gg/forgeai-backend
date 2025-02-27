@@ -82,6 +82,7 @@ const buildTradeDecisionsSection = (ctx: TradingContext): string => {
 const buildTransactionsSection = (ctx: TradingContext): string => {
     const transactions = ctx.tradeResults.length
         ? ctx.tradeResults
+              .filter((tradeResult) => tradeResult.transaction)
               .map((tradeResult, i) => formatTransaction(tradeResult, i))
               .join("\n")
         : "None";
