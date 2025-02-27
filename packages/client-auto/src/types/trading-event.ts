@@ -1,12 +1,12 @@
 import { IAgentRuntime } from "@elizaos/core";
 import { PortfolioState } from "../trading/portfolio";
-import { TokenPairPriceHistory } from "../trading/price-history";
+import { TokenPriceHistory } from "../trading/price-history";
 import { TradeDecision } from "./trading-decision";
 
 export interface TradingEvent {
     type: "TRADE" | "ANALYSIS" | "ERROR";
     data: {
-        priceHistory?: TokenPairPriceHistory;
+        priceHistory?: TokenPriceHistory;
         portfolio?: PortfolioState;
         decision?: TradeDecision;
         tx?: string;
@@ -20,7 +20,7 @@ export interface TradingMemoryParams {
     runtime: IAgentRuntime;
     cycle: number;
     decision: TradeDecision;
-    priceHistory: TokenPairPriceHistory;
+    priceHistory: TokenPriceHistory;
     portfolio: PortfolioState;
     tx?: string;
 }

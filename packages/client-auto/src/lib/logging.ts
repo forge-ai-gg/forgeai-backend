@@ -1,3 +1,4 @@
+import { TradeResult } from "../trading/execute";
 import { TradingContext } from "../types/trading-context";
 
 export const buildTradingContextLogMessage = (ctx: TradingContext): string => {
@@ -7,7 +8,7 @@ export const buildTradingContextLogMessage = (ctx: TradingContext): string => {
         buildOpenPositionsSection(ctx),
         buildTradingPairsSection(ctx),
         buildTradeDecisionsSection(ctx),
-        ctx.transactions ? buildTransactionsSection(ctx) : "",
+        ctx.tradeResults ? buildTransactionsSection(ctx) : "",
         buildMemorySection(ctx),
     ];
 
@@ -17,11 +18,12 @@ export const buildTradingContextLogMessage = (ctx: TradingContext): string => {
 const buildHeaderSection = (ctx: TradingContext): string => `
 TRADING CONTEXT:
 --------------------------------
-Agent: ${ctx.runtime.character.name}
-AgentId: ${ctx.runtime.character.id}
-Cycle: ${ctx.cycle}
-Wallet: ${ctx.publicKey.toString()}
-Strategy: ${ctx.agentTradingStrategy.title} (${
+Agent:        ${ctx.runtime.character.name}
+AgentId:      ${ctx.runtime.character.id}
+Cycle:        ${ctx.cycle}
+Wallet:       ${ctx.publicKey.toString()}
+PaperTrading: ${ctx.isPaperTrading}
+Strategy:     ${ctx.agentTradingStrategy.title} (${
     ctx.agentStrategyAssignment.id
 })`;
 
@@ -78,20 +80,32 @@ const buildTradeDecisionsSection = (ctx: TradingContext): string => {
 };
 
 const buildTransactionsSection = (ctx: TradingContext): string => {
-    const transactions = ctx.transactions.length
-        ? ctx.transactions.map((t, i) => formatTransaction(t, i)).join("\n")
+    const transactions = ctx.tradeResults.length
+        ? ctx.tradeResults
+              .map((tradeResult, i) => formatTransaction(tradeResult, i))
+              .join("\n")
         : "None";
 
     return `TRANSACTIONS:\n${transactions}`;
 };
 
-const formatTransaction = (t: any, i: number) => `
-${i + 1}. ${t.decision.tokenPair.from.symbol} -> ${
-    t.decision.tokenPair.to.symbol
+const formatTransaction = (tradeResult: TradeResult, i: number) => `
+${i + 1}. ${tradeResult.transaction.tokenFromSymbol} -> ${
+    tradeResult.transaction.tokenToSymbol
 }
-   Amount: ${t.decision.amount}
-   Success: ${t.success}
-   ${t.success ? `Hash: ${t.transactionHash}` : `Error: ${t.error?.message}`}`;
+   tokenFromAmount: ${tradeResult.transaction.tokenFromAmount}
+   tokenToAmount: ${tradeResult.transaction.tokenToAmount}
+   Success: ${tradeResult.success}
+   TxId: ${tradeResult.transaction.id}
+   ${
+       tradeResult.success
+           ? `Hash: ${tradeResult.transaction.transactionHash}`
+           : `Error: ${tradeResult.error?.message}`
+   }`;
 
 const buildMemorySection = (ctx: TradingContext): string =>
-    `MEMORY:\n${ctx.memory ? JSON.stringify(ctx.memory, null, 2) : "None"}`;
+    `THOUGHT:\n${
+        ctx.thoughtResponse
+            ? JSON.stringify(ctx.thoughtResponse.text, null, 2)
+            : "None"
+    }`;

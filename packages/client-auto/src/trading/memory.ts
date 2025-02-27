@@ -3,12 +3,15 @@ import { generateRandomThought } from "../forge/random-thoughts";
 import { generateTradingThought } from "../forge/trading-thought";
 import { createMemory } from "../forge/utils";
 import { EnumMemoryType } from "../lib/enums";
+import { ThoughtResponse } from "../types/thoughts";
 import { TradingContext } from "../types/trading-context";
 import { TradingEvent } from "../types/trading-event";
 
-export async function recordMemory(ctx: TradingContext): Promise<string> {
+export async function recordMemory(
+    ctx: TradingContext
+): Promise<ThoughtResponse> {
     // Now use the cleaned context
-    if (ctx.transactions?.length) {
+    if (ctx.tradeResults?.length) {
         return await createTradeMemory(ctx);
     }
 
@@ -17,7 +20,7 @@ export async function recordMemory(ctx: TradingContext): Promise<string> {
 
 export const createTradeMemory = async (
     ctx: TradingContext
-): Promise<string> => {
+): Promise<ThoughtResponse> => {
     const action = `You analyzed the market and observed: ${ctx.logMessage}`;
     const thought = await generateTradingThought({
         runtime: ctx.runtime,
@@ -27,12 +30,10 @@ export const createTradeMemory = async (
 
     await createMemory({
         runtime: ctx.runtime,
-        message: thought,
+        message: thought.text,
         additionalContent: {
             type: EnumMemoryType.TRADE,
             logMessage: ctx.logMessage,
-            transactions: ctx.transactions,
-            portfolio: ctx.portfolio,
         },
     });
 
@@ -41,7 +42,7 @@ export const createTradeMemory = async (
 
 export const createIdleMemory = async (
     ctx: TradingContext
-): Promise<string> => {
+): Promise<ThoughtResponse> => {
     const action = `You analyzed the market and observed: ${ctx.logMessage}`;
     const thought = await generateRandomThought({
         runtime: ctx.runtime,
@@ -54,14 +55,11 @@ export const createIdleMemory = async (
         message: thought.text,
         additionalContent: {
             type: EnumMemoryType.IDLE,
-            context: {
-                type: "idle",
-                logMessage: ctx.logMessage,
-            },
+            logMessage: ctx.logMessage,
         },
     });
 
-    return thought.text;
+    return thought;
 };
 
 export async function recordError(params: {

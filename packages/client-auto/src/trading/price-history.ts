@@ -2,16 +2,19 @@ import { fetchPriceHistory, priceHistoryUrl } from "../lib/birdeye";
 import { getMillisecondsForTimeInterval } from "../lib/timing";
 import { DefiHistoryPriceItem } from "../types/birdeye/api/defi";
 import { PriceHistoryParams } from "../types/market-data";
+import { Token } from "../types/trading-config";
 import { TradingStrategyConfig } from "../types/trading-strategy-config";
 
-export type TokenPairPriceHistory = {
-    from: DefiHistoryPriceItem[];
-    to: DefiHistoryPriceItem[];
+export type TokenPriceHistory = {
+    token: Token;
+    prices: DefiHistoryPriceItem[];
 };
+
+export type AllTokenPriceHistory = Record<string, TokenPriceHistory>;
 
 export async function getPriceHistory(
     tradingStrategyConfig: TradingStrategyConfig
-): Promise<TokenPairPriceHistory[]> {
+): Promise<AllTokenPriceHistory> {
     const timeIntervalMs = getMillisecondsForTimeInterval(
         tradingStrategyConfig.timeInterval
     );
@@ -21,56 +24,40 @@ export async function getPriceHistory(
     );
     const timeTo = Math.floor(Date.now() / 1000);
 
-    // fetch the price history for each token in the pair and return them all in a big array
-    const tokenPairPriceHistory = await Promise.all(
-        tradingStrategyConfig.tokenPairs.map(async (pair) => {
-            const [fromPrices, toPrices] = await Promise.all([
-                fetchTokenPriceHistory({
-                    tokenAddress: pair.from.address,
-                    tokenSymbol: pair.from.symbol,
-                    timeInterval: tradingStrategyConfig.timeInterval,
-                    timeFrom,
-                    timeTo,
-                }),
-                fetchTokenPriceHistory({
-                    tokenAddress: pair.to.address,
-                    tokenSymbol: pair.to.symbol,
-                    timeInterval: tradingStrategyConfig.timeInterval,
-                    timeFrom,
-                    timeTo,
-                }),
-            ]);
+    // get all distinct tokens from the trading strategy config
+    const allTokens = tradingStrategyConfig.tokenPairs.flatMap((pair) => [
+        pair.from,
+        pair.to,
+    ]);
 
+    // fetch the price history for each token in the pair and return them all in a big array
+    const tokenPairPriceHistoryArray = await Promise.all(
+        allTokens.map(async (token) => {
+            const prices = await fetchTokenPriceHistory({
+                tokenAddress: token.address,
+                tokenSymbol: token.symbol,
+                timeInterval: tradingStrategyConfig.timeInterval,
+                timeFrom,
+                timeTo,
+            });
             return {
-                from: fromPrices,
-                to: toPrices,
+                token,
+                prices,
             };
         })
     );
 
+    // Convert array to object with token addresses as keys
+    const tokenPairPriceHistory = tokenPairPriceHistoryArray.reduce(
+        (acc, item) => {
+            acc[item.token.address] = item;
+            return acc;
+        },
+        {} as AllTokenPriceHistory
+    );
+
     return tokenPairPriceHistory;
 }
-
-// function analyzeTechnicals(prices: number[]): MarketData["technicals"] {
-//     return {
-//         rsi: calculateRSI(prices, 14),
-//         sma: calculateSMA(prices, 20),
-//         currentPrice: prices[prices.length - 1],
-//         priceChange24h:
-//             ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100,
-//     };
-// }
-
-// function calculateMetrics(
-//     prices: number[],
-//     volumes: number[]
-// ): MarketData["metrics"] {
-//     return {
-//         volume24h: volumes.reduce((sum, vol) => sum + vol, 0),
-//         liquidity: volumes[volumes.length - 1] * prices[prices.length - 1],
-//         volatility: calculateVolatility(prices),
-//     };
-// }
 
 async function fetchTokenPriceHistory(params: PriceHistoryParams) {
     const url = priceHistoryUrl(
@@ -82,22 +69,3 @@ async function fetchTokenPriceHistory(params: PriceHistoryParams) {
     );
     return await fetchPriceHistory(url);
 }
-
-// function calculateRSI(prices: number[], period: number): number[] {
-//     return rsi({ period, values: prices });
-// }
-
-// function calculateSMA(prices: number[], period: number): number[] {
-//     return sma({ period, values: prices });
-// }
-
-// function calculateVolatility(prices: number[]): number {
-//     const returns = prices
-//         .slice(1)
-//         .map((price, i) => Math.log(price / prices[i]));
-//     const mean = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
-//     const variance =
-//         returns.reduce((sum, ret) => sum + Math.pow(ret - mean, 2), 0) /
-//         returns.length;
-//     return Math.sqrt(variance) * Math.sqrt(365) * 100;
-// }

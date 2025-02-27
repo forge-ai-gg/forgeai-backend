@@ -4,12 +4,12 @@ import { FORCE_CLOSE_POSITION, FORCE_OPEN_POSITION } from "../lib/constants";
 import { formatCurrency, formatNumber } from "../lib/formatters";
 import { TradingContext } from "../types/trading-context";
 import { TokenPair } from "../types/trading-strategy-config";
-import { TokenPairPriceHistory } from "./price-history";
 
 export type TradeEvaluationResult = {
     shouldOpen: boolean;
     shouldClose: boolean;
     description: string;
+    hasOpenPosition: boolean;
     openProximity: number; // 0-1 representing how close we are to opening
     closeProximity: number; // 0-1 representing how close we are to closing
 };
@@ -33,10 +33,10 @@ export function evaluateStrategy({
             description: "Insufficient data",
             openProximity: 0,
             closeProximity: 0,
+            hasOpenPosition: false,
         };
 
     const tradingPair = tradingStrategyConfig.tokenPairs[index];
-    const pairPriceHistory = priceHistory[index];
 
     // get the type of the trading strategy that is used to branch logic to determine the strategy to use
     const { type } = tradingStrategyConfig;
@@ -46,7 +46,6 @@ export function evaluateStrategy({
             return evaluateRsiStrategy({
                 ctx,
                 pair: tradingPair,
-                pairPriceHistory,
                 amount,
             });
         default:
@@ -56,6 +55,7 @@ export function evaluateStrategy({
                 description: "Unsupported strategy type",
                 openProximity: 0,
                 closeProximity: 0,
+                hasOpenPosition: false,
             };
     }
 }
@@ -63,12 +63,10 @@ export function evaluateStrategy({
 const evaluateRsiStrategy = ({
     ctx,
     pair,
-    pairPriceHistory,
     amount,
 }: {
     ctx: TradingContext;
     pair: TokenPair;
-    pairPriceHistory: TokenPairPriceHistory;
     amount: number;
 }): TradeEvaluationResult => {
     const { portfolio, tradingStrategyConfig } = ctx;
@@ -79,25 +77,33 @@ const evaluateRsiStrategy = ({
             description: "Insufficient data",
             openProximity: 0,
             closeProximity: 0,
+            hasOpenPosition: false,
         };
+
     const { overBought, overSold } = tradingStrategyConfig.rsiConfig;
 
     const currentFromPrice =
-        pairPriceHistory.from[pairPriceHistory.from.length - 1].value;
+        ctx.priceHistory[pair.from.address].prices[
+            ctx.priceHistory[pair.from.address].prices.length - 1
+        ].value;
     const currentToPrice =
-        pairPriceHistory.to[pairPriceHistory.to.length - 1].value;
+        ctx.priceHistory[pair.to.address].prices[
+            ctx.priceHistory[pair.to.address].prices.length - 1
+        ].value;
 
     const rsiValues = rsi({
         period: tradingStrategyConfig.rsiConfig.length,
-        values: pairPriceHistory.to.map((p) => p.value),
+        values: ctx.priceHistory[pair.to.address].prices.map((p) => p.value),
     });
     const currentRsi = rsiValues[rsiValues.length - 1];
 
-    const hasOpenPosition = portfolio.openPositions?.find(
+    const openPosition = portfolio.openPositions?.find(
         (p) =>
             p.baseTokenAddress === pair.from.address &&
             p.quoteTokenAddress === pair.to.address
     );
+
+    const hasOpenPosition = Boolean(openPosition);
 
     // Calculate proximities
     const openProximity = hasOpenPosition
@@ -123,6 +129,7 @@ const evaluateRsiStrategy = ({
         shouldClose,
         openProximity,
         closeProximity,
+        hasOpenPosition,
         description: `${pair.from.symbol} (${formatCurrency(
             currentFromPrice
         )}) / ${pair.to.symbol} (${formatCurrency(
@@ -255,11 +262,14 @@ export function calculateTradeAmount({
     return trimmedAmount;
 }
 
-export function generateTradeReason(ctx: TradingContext): string {
+export function generateTradeReason(
+    ctx: TradingContext,
+    pair: TokenPair
+): string {
     const { priceHistory, portfolio } = ctx;
     if (!priceHistory || !portfolio) return "Insufficient data";
 
-    const rsi = priceHistory.map((p) => p.from.values);
+    const rsi = priceHistory[pair.to.address].prices.map((p) => p.value);
     const currentRsi = rsi[rsi.length - 1];
 
     return `RSI at ${currentRsi} with ${

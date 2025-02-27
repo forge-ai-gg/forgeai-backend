@@ -1,4 +1,4 @@
-import { elizaLogger, IAgentRuntime } from "@elizaos/core";
+import { IAgentRuntime } from "@elizaos/core";
 import {
     BirdeyeProvider,
     WalletPortfolioResponse,
@@ -21,8 +21,6 @@ export const getWalletPortfolio = async (
                 },
             }
         );
-
-    elizaLogger.info("Response: ", JSON.stringify(response, null, 2));
 
     if (!response) {
         throw new Error("No result found");

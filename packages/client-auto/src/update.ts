@@ -1,12 +1,12 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { buildTradingContextLogMessage } from "./lib/logging";
+import { initializeTradingContext } from "./trading/context";
 import { handleError } from "./trading/error";
 import { evaluateTradeDecisions } from "./trading/evaluate";
 import { executeTradeDecisions } from "./trading/execute";
 import { recordMemory } from "./trading/memory";
 import { getPortfolio } from "./trading/portfolio";
 import { getPriceHistory } from "./trading/price-history";
-import { initializeTradingContext } from "./types/trading-context";
 
 export async function update(runtime: IAgentRuntime, cycle: number) {
     try {
@@ -30,14 +30,14 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
         elizaLogger.info(`Evaluated trade decisions...`);
 
         // 5. Execute trades and capture results
-        ctx.transactions = await executeTradeDecisions(ctx);
+        ctx.tradeResults = await executeTradeDecisions(ctx);
         elizaLogger.info(`Executed trades...`);
 
         // record the log message up to this point to be used by the agent when logging its memory to talk about what it did
         ctx.logMessage = buildTradingContextLogMessage(ctx);
 
         // 6. Record a single consolidated memory for this update cycle
-        ctx.memory = await recordMemory(ctx);
+        ctx.thoughtResponse = await recordMemory(ctx);
         elizaLogger.info(`Recorded memory...`);
 
         // 7. Log the log message

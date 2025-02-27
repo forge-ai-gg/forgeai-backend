@@ -4,6 +4,7 @@ import {
     elizaLogger,
     generateMessageResponse,
 } from "@elizaos/core";
+import { ThoughtResponse } from "../types/thoughts";
 import { cleanResponseText } from "./utils";
 
 // export const logTradingThought = async (runtime: IAgentRuntime) => {
@@ -29,7 +30,7 @@ export const generateTradingThought = async ({
     runtime: IAgentRuntime;
     action: string;
     details?: any;
-}): Promise<string> => {
+}): Promise<ThoughtResponse> => {
     const prompt =
         TRADING_THOUGHT_PROMPT_VARIATIONS[
             Math.floor(Math.random() * TRADING_THOUGHT_PROMPT_VARIATIONS.length)
@@ -56,10 +57,16 @@ IMPORTANT: Your response must be valid JSON. Do not include any newlines or spec
             modelClass: ModelClass.SMALL,
         });
 
-        return cleanResponseText(response?.text || "Ready to begin...");
+        return {
+            text: cleanResponseText(response?.text || "Ready to begin..."),
+            tokenUsage: response?.tokenUsage || { input: 0, output: 0 },
+        };
     } catch (error) {
         elizaLogger.error("Error generating initial thought:", error);
-        return "Ready to begin...";
+        return {
+            text: "Ready to begin...",
+            tokenUsage: { input: 0, output: 0 },
+        };
     }
 };
 
