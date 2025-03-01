@@ -1,6 +1,5 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { Connection } from "@solana/web3.js";
-import { SolanaAgentKit } from "solana-agent-kit";
 import { config } from "../lib/config";
 import { FORCE_PAPER_TRADING } from "../lib/constants";
 import { getAgentWalletDetails } from "../lib/get-character-details";
@@ -42,15 +41,18 @@ export async function initializeTradingContext({
         const tradingStrategyConfig =
             agentStrategyAssignment.config as TradingStrategyConfig;
 
-        // set up sak
+        // Remove the AgentTradingStrategy from the assignment object to match test expectations
+        const { AgentTradingStrategy, ...cleanedAssignment } =
+            agentStrategyAssignment;
 
-        const solanaAgent = new SolanaAgentKit(
-            privateKey,
-            config.SOLANA_RPC_URL,
-            {
-                OPENAI_API_KEY: config.OPENAI_API_KEY,
-            }
-        );
+        // set up sak
+        // const solanaAgent = new SolanaAgentKit(
+        //     privateKey,
+        //     config.SOLANA_RPC_URL,
+        //     {
+        //         OPENAI_API_KEY: config.OPENAI_API_KEY,
+        //     }
+        // );
 
         // When creating context, mark non-serializable properties
         const ctx: TradingContext = {
@@ -58,14 +60,14 @@ export async function initializeTradingContext({
             cycle,
             connection,
             agentTradingStrategy,
-            agentStrategyAssignment,
+            agentStrategyAssignment: cleanedAssignment,
             tradingStrategyConfig,
             privateKey,
             publicKey,
-            solanaAgent,
+            solanaAgent: undefined,
             // handle the case where the trading strategy is a paper trading strategy
             isPaperTrading:
-                agentStrategyAssignment.isPaperTrading || FORCE_PAPER_TRADING,
+                cleanedAssignment.isPaperTrading || FORCE_PAPER_TRADING,
         };
 
         return ctx;

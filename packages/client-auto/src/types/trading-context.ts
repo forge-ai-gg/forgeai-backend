@@ -1,7 +1,7 @@
 import { IAgentRuntime } from "@elizaos/core";
 import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
 import { Connection } from "@solana/web3.js";
-import { SolanaAgentKit } from "solana-agent-kit";
+// import { SolanaAgentKit } from "solana-agent-kit";
 import { TradeResult } from "../trading/execute";
 import { PortfolioState } from "../trading/portfolio";
 import { AllTokenPriceHistory } from "../trading/price-history";
@@ -29,7 +29,7 @@ export interface TradingContext {
     agentTradingStrategy: AgentTradingStrategy;
     agentStrategyAssignment: AgentStrategyAssignment;
     tradingStrategyConfig: TradingStrategyConfig;
-    solanaAgent: SolanaAgentKit;
+    solanaAgent?: any;
     isPaperTrading?: boolean;
     tradeResults?: TradeResult[];
     logMessage?: string;

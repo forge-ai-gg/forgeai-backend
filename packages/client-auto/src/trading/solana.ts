@@ -1,6 +1,7 @@
 import { BIRDEYE_BASE_URL } from "../lib/birdeye";
 import { config } from "../lib/config";
 import { WalletPortfolioResponse } from "../types/birdeye/api/wallet";
+
 export async function getWalletPortfolio(
     publicKey: string
 ): Promise<WalletPortfolioResponse> {

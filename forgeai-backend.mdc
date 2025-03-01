@@ -1,6 +1,6 @@
 ---
-description: Creating functionality in the trading execution steps of the agents auto client workflow
-globs: packages/client-auto/*
+description: 
+globs: 
 alwaysApply: false
 ---
  # Solana Trade Execution Framework Rules
@@ -11,7 +11,6 @@ alwaysApply: false
 - Each component must be developed using a test-driven approach
 - Write tests before implementing functionality
 - Tests should be in the `__tests__` directory with corresponding test files
-- Only use Vitest and not Jest for tests and mocking
 - Each trading step must have comprehensive unit tests covering edge cases
 - Use mock data and dependency injection to isolate components for testing
 - Aim for high test coverage (>80%) for all trading functionality

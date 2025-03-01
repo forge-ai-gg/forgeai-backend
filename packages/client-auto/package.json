@@ -31,18 +31,24 @@
 		"envalid": "^8.0.0",
 		"multer": "1.4.5-lts.1",
 		"prisma": "^5.22.0",
-		"solana-agent-kit": "^1.0.0",
 		"technicalindicators": "^3.1.0",
 		"zod-prisma-types": "^3.2.1"
 	},
 	"devDependencies": {
-		"tsup": "8.3.5"
+		"@vitest/coverage-v8": "^1.4.0",
+		"dotenv": "^16.4.7",
+		"dotenv-cli": "^8.0.0",
+		"tsup": "8.3.5",
+		"vitest": "^1.4.0"
 	},
 	"scripts": {
-		"build": "tsup --format esm --dts",
-		"dev": "pnpm prisma:generate && tsup --format esm --dts --watch",
+		"build": "tsup",
+		"dev": "tsup --watch",
 		"prisma:generate": "prisma generate --no-hints",
-		"prisma:pull": "npx prisma db pull && pnpm prisma:generate"
+		"prisma:pull": "npx prisma db pull && pnpm prisma:generate",
+		"test": "vitest --watch",
+		"test:env": "dotenv -e .env.test -- vitest run",
+		"test:single": "dotenv -e .env.test -- vitest run src/testing/trading-context.test.ts"
 	},
 	"peerDependencies": {
 		"whatwg-url": "7.1.0"
