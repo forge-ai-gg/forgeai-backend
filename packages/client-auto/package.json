@@ -46,7 +46,8 @@
 		"dev": "tsup --watch",
 		"prisma:generate": "prisma generate --no-hints",
 		"prisma:pull": "npx prisma db pull && pnpm prisma:generate",
-		"test": "vitest --watch",
+		"test": "vitest run",
+		"test:watch": "vitest --watch",
 		"test:env": "dotenv -e .env.test -- vitest run",
 		"test:single": "dotenv -e .env.test -- vitest run src/testing/trading-context.test.ts"
 	},
