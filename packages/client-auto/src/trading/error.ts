@@ -1,6 +1,10 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { recordError } from "./memory";
 
+/**
+ * Handle general trading errors
+ * Logs and records errors that occur during the trading cycle
+ */
 export async function handleError(params: {
     runtime: IAgentRuntime;
     cycle: number;
@@ -25,4 +29,37 @@ export async function handleError(params: {
     );
 
     await recordError(params);
+}
+
+/**
+ * Handle trade execution errors
+ * Centralizes error handling for trade execution
+ */
+export async function handleTradeError(params: {
+    error: Error;
+    decision?: any;
+    context?: string;
+}) {
+    const { error, decision, context } = params;
+
+    elizaLogger.error(`Trade error in ${context || "unknown context"}:`, error);
+
+    // Return standardized error result
+    return {
+        success: false,
+        error,
+        errorContext: context,
+        affectedDecision: decision,
+    };
+}
+
+/**
+ * Create a standardized error response for trading operations
+ */
+export function createErrorResponse(error: Error, context: string) {
+    return {
+        success: false,
+        error,
+        errorContext: context,
+    };
 }

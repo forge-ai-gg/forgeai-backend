@@ -21,9 +21,7 @@ import { TradingContext } from "./types/trading-context";
  * 3. Get price history
  * 4. Evaluate trade decisions
  * 5. Execute trade decisions
- * 6. Build log message
- * 7. Record memory
- * 8. Log results
+ * 6. Build log message, record memory, and log results
  *
  * Each step is designed to be independently testable with clear inputs and outputs,
  * allowing for comprehensive test coverage of edge cases.
@@ -35,15 +33,7 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
         elizaLogger.info(`Trading context initialized with wallet details`);
 
         // 2. Execute all trading steps in sequence
-        const updatedCtx = await executeSteps(ctx, [
-            tradingSteps.getPortfolio,
-            tradingSteps.getPriceHistory,
-            tradingSteps.evaluateTradeDecisions,
-            tradingSteps.executeTradeDecisions,
-            tradingSteps.buildLogMessage,
-            tradingSteps.recordMemory,
-            tradingSteps.logResults,
-        ]);
+        const updatedCtx = await executeWorkflow(ctx);
 
         return updatedCtx;
     } catch (error) {
@@ -55,142 +45,140 @@ export async function update(runtime: IAgentRuntime, cycle: number) {
 export type TradingStep = (ctx: TradingContext) => Promise<TradingContext>;
 
 /**
- * Trading steps definition
+ * Execute the trading workflow
  *
- * Each step is independently testable and follows the same pattern:
- * 1. Takes a TradingContext as input
- * 2. Performs a specific operation
- * 3. Returns an updated TradingContext
- *
- * This design enables comprehensive unit testing of each step in isolation,
- * as well as integration testing of multiple steps together.
+ * This function orchestrates the entire trading process by executing
+ * each step in sequence and passing the updated context between steps.
  */
-export const tradingSteps: Record<string, TradingStep> = {
-    /**
-     * Step 1: Get portfolio data
-     *
-     * Retrieves current wallet holdings and open positions
-     * Tests should verify correct handling of:
-     * - Empty wallets
-     * - Multiple token holdings
-     * - Various open positions
-     * - API failures
-     */
-    getPortfolio: async (ctx: TradingContext): Promise<TradingContext> => {
-        ctx.portfolio = await getPortfolio({
-            agentStrategyAssignmentId: ctx.agentStrategyAssignment.id,
-            publicKey: ctx.publicKey,
-        });
-        elizaLogger.info(`Portfolio data retrieved successfully`);
-        return ctx;
-    },
+async function executeWorkflow(ctx: TradingContext): Promise<TradingContext> {
+    // Define the trading steps in sequence
+    const steps = [
+        getPortfolioStep,
+        getPriceHistoryStep,
+        evaluateTradeDecisionsStep,
+        executeTradeDecisionsStep,
+        buildLogAndRecordMemoryStep,
+    ];
 
-    /**
-     * Step 2: Get price history
-     *
-     * Retrieves historical price data for tokens in the trading strategy
-     * Tests should verify correct handling of:
-     * - Various time periods
-     * - Missing price data
-     * - API failures
-     * - Data format validation
-     */
-    getPriceHistory: async (ctx: TradingContext): Promise<TradingContext> => {
-        ctx.priceHistory = await getPriceHistory(ctx.tradingStrategyConfig);
-        elizaLogger.info(`Price history data retrieved successfully`);
-        return ctx;
-    },
+    // Execute all steps in sequence
+    return await executeSteps(ctx, steps);
+}
 
-    /**
-     * Step 3: Evaluate trade decisions
-     *
-     * Analyzes market data and generates trade signals
-     * Tests should verify correct handling of:
-     * - Various strategy types
-     * - Buy/sell signals
-     * - Position sizing
-     * - Risk management rules
-     * - Edge cases in technical indicators
-     */
-    evaluateTradeDecisions: async (
-        ctx: TradingContext
-    ): Promise<TradingContext> => {
-        ctx.tradeDecisions = await evaluateTradeDecisions(ctx);
-        elizaLogger.info(
-            `Trade decisions evaluated: ${
-                ctx.tradeDecisions?.length || 0
-            } signals generated`
-        );
-        return ctx;
-    },
+/**
+ * Step 1: Get portfolio data
+ *
+ * Retrieves current wallet holdings and open positions
+ * Tests should verify correct handling of:
+ * - Empty wallets
+ * - Multiple token holdings
+ * - Various open positions
+ * - API failures
+ */
+async function getPortfolioStep(ctx: TradingContext): Promise<TradingContext> {
+    ctx.portfolio = await getPortfolio({
+        agentStrategyAssignmentId: ctx.agentStrategyAssignment.id,
+        publicKey: ctx.publicKey,
+    });
+    elizaLogger.info(`Portfolio data retrieved successfully`);
+    return ctx;
+}
 
-    /**
-     * Step 4: Execute trade decisions
-     *
-     * Executes trades based on the decisions from the previous step
-     * Tests should verify correct handling of:
-     * - Transaction success/failure
-     * - Slippage protection
-     * - Retry mechanisms
-     * - Error handling
-     * - Position tracking
-     */
-    executeTradeDecisions: async (
-        ctx: TradingContext
-    ): Promise<TradingContext> => {
-        ctx.tradeResults = await executeTradeDecisions(ctx);
-        elizaLogger.info(
-            `Trade execution completed: ${
-                ctx.tradeResults?.filter((r) => r.success).length || 0
-            }/${ctx.tradeResults?.length || 0} successful`
-        );
-        return ctx;
-    },
+/**
+ * Step 2: Get price history
+ *
+ * Retrieves historical price data for tokens in the trading strategy
+ * Tests should verify correct handling of:
+ * - Various time periods
+ * - Missing price data
+ * - API failures
+ * - Data format validation
+ */
+async function getPriceHistoryStep(
+    ctx: TradingContext
+): Promise<TradingContext> {
+    ctx.priceHistory = await getPriceHistory(ctx.tradingStrategyConfig);
+    elizaLogger.info(`Price history data retrieved successfully`);
+    return ctx;
+}
 
-    /**
-     * Step 5: Build log message
-     *
-     * Creates a structured log message summarizing the trading cycle
-     * Tests should verify correct handling of:
-     * - Complete trading context
-     * - Partial context (missing fields)
-     * - Various trade outcomes
-     */
-    buildLogMessage: async (ctx: TradingContext): Promise<TradingContext> => {
-        ctx.logMessage = buildTradingContextLogMessage(ctx);
-        return ctx;
-    },
+/**
+ * Step 3: Evaluate trade decisions
+ *
+ * Analyzes market data and generates trade signals
+ * Tests should verify correct handling of:
+ * - Various strategy types
+ * - Buy/sell signals
+ * - Position sizing
+ * - Risk management rules
+ * - Edge cases in technical indicators
+ */
+async function evaluateTradeDecisionsStep(
+    ctx: TradingContext
+): Promise<TradingContext> {
+    ctx.tradeDecisions = await evaluateTradeDecisions(ctx);
+    elizaLogger.info(
+        `Trade decisions evaluated: ${
+            ctx.tradeDecisions?.length || 0
+        } signals generated`
+    );
+    return ctx;
+}
 
-    /**
-     * Step 6: Record memory
-     *
-     * Stores trading context for future reference and analysis
-     * Tests should verify correct handling of:
-     * - Memory persistence
-     * - Data integrity
-     * - Error handling
-     */
-    recordMemory: async (ctx: TradingContext): Promise<TradingContext> => {
-        ctx.thoughtResponse = await recordMemory(ctx);
-        elizaLogger.info(`Trading memory recorded successfully`);
-        return ctx;
-    },
+/**
+ * Step 4: Execute trade decisions
+ *
+ * Executes trades based on the decisions from the previous step
+ * Tests should verify correct handling of:
+ * - Transaction success/failure
+ * - Slippage protection
+ * - Retry mechanisms
+ * - Error handling
+ * - Position tracking
+ */
+async function executeTradeDecisionsStep(
+    ctx: TradingContext
+): Promise<TradingContext> {
+    ctx.tradeResults = await executeTradeDecisions(ctx);
+    elizaLogger.info(
+        `Trade execution completed: ${
+            ctx.tradeResults?.filter((r) => r.success).length || 0
+        }/${ctx.tradeResults?.length || 0} successful`
+    );
+    return ctx;
+}
 
-    /**
-     * Step 7: Log results
-     *
-     * Outputs the final trading context log message
-     * Tests should verify correct handling of:
-     * - Log formatting
-     * - Complete data inclusion
-     */
-    logResults: async (ctx: TradingContext): Promise<TradingContext> => {
-        // Update the log message with the final state
-        ctx.logMessage = buildTradingContextLogMessage(ctx);
-        elizaLogger.info(ctx.logMessage);
-        return ctx;
-    },
-};
+/**
+ * Step 5: Build log message and record memory
+ *
+ * Creates a structured log message summarizing the trading cycle,
+ * stores trading context for future reference and analysis,
+ * and logs the final results.
+ *
+ * Tests should verify correct handling of:
+ * - Complete trading context
+ * - Partial context (missing fields)
+ * - Various trade outcomes
+ * - Memory persistence
+ * - Data integrity
+ * - Error handling
+ * - Log formatting
+ * - Complete data inclusion
+ */
+async function buildLogAndRecordMemoryStep(
+    ctx: TradingContext
+): Promise<TradingContext> {
+    // Build the log message
+    ctx.logMessage = buildTradingContextLogMessage(ctx);
+
+    // Record memory
+    ctx.thoughtResponse = await recordMemory(ctx);
+    elizaLogger.info(`Trading memory recorded successfully`);
+
+    // Log the final results
+    elizaLogger.info(ctx.logMessage);
+
+    return ctx;
+}
 
 /**
  * Execute a sequence of trading steps
@@ -208,11 +196,8 @@ async function executeSteps(
     initialCtx: TradingContext,
     steps: TradingStep[]
 ): Promise<TradingContext> {
-    let ctx = initialCtx;
-
-    for (const step of steps) {
-        ctx = await step(ctx);
-    }
-
-    return ctx;
+    return steps.reduce(
+        async (ctxPromise, step) => step(await ctxPromise),
+        Promise.resolve(initialCtx)
+    );
 }

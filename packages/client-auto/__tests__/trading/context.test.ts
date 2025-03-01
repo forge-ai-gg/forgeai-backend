@@ -16,6 +16,12 @@ vi.mock("@solana/web3.js", () => ({
     })),
 }));
 
+vi.mock("solana-agent-kit", () => ({
+    SolanaAgentKit: vi.fn().mockImplementation(() => ({
+        // Mock SolanaAgentKit methods
+    })),
+}));
+
 vi.mock("../../src/lib/prisma", () => ({
     prisma: {
         agentStrategyAssignment: {
@@ -50,7 +56,9 @@ describe("initializeTradingContext", () => {
 
     const mockCycle = 1;
 
-    const mockPrivateKey = "test-private-key";
+    // Use a valid base58 string for the private key
+    const mockPrivateKey =
+        "5MaiiCavjCmn9Hs1o3eznqDEhRwxo7pXiAYez7keQUviUkauRiTMD8DrESdrNjN8zd9mTmVhRvBJeg5vhyvgrAhG";
     const mockPublicKey = "test-public-key";
 
     const mockAgentTradingStrategy = {

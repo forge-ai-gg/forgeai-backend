@@ -1,0 +1,76 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __toESM = (this && this.__toESM) || function(mod, isNodeMode, target) {
+    if (isNodeMode || !mod || !mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    }
+    __createBinding(result, mod, "default");
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AptosClient = void 0;
+
+// Dynamic import for got
+let import_got;
+
+// Initialize the import_got variable asynchronously
+(async () => {
+  try {
+    const gotModule = await import('got');
+    import_got = __toESM(gotModule);
+  } catch (error) {
+    console.error('Error importing got:', error);
+    // Fallback to require if dynamic import fails
+    try {
+      import_got = __toESM(require("got/dist/source"));
+    } catch (fallbackError) {
+      console.error('Fallback import failed:', fallbackError);
+      throw error;
+    }
+  }
+})();
+
+const FormData = require("form-data");
+const axios_1 = require("axios");
+const utils_1 = require("../utils");
+
+// node_modules/@aptos-labs/aptos-client/dist/types/index.node.js
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AptosClient = void 0;
+
+// Dynamic import for got
+let got_1;
+
+// Initialize the got_1 variable asynchronously
+(async () => {
+  try {
+    const gotModule = await import('got');
+    got_1 = gotModule.default;
+  } catch (error) {
+    console.error('Error importing got:', error);
+    // Fallback to require if dynamic import fails
+    try {
+      got_1 = require("got/dist/source");
+    } catch (fallbackError) {
+      console.error('Fallback import failed:', fallbackError);
+      throw error;
+    }
+  }
+})();
+
+const FormData = require("form-data");
+const axios_1 = require("axios");
+const utils_1 = require("../utils"); 

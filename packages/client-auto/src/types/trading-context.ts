@@ -1,7 +1,6 @@
 import { IAgentRuntime } from "@elizaos/core";
 import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
 import { Connection } from "@solana/web3.js";
-// import { SolanaAgentKit } from "solana-agent-kit";
 import { TradeResult } from "../trading/execute";
 import { PortfolioState } from "../trading/portfolio";
 import { AllTokenPriceHistory } from "../trading/price-history";

@@ -1,11 +1,14 @@
 import { elizaLogger } from "@elizaos/core";
 import { Position, Transaction } from "@prisma/client";
 import { EnumTradeStatus, EnumTradeType } from "../lib/enums";
-import { prisma } from "../lib/prisma";
 import { getSwapDetails } from "../lib/solana.utils";
 import { Token } from "../types/trading-config";
 import { TradingContext } from "../types/trading-context";
 import { TradeDecision } from "../types/trading-decision";
+import { recordFailedTrade, recordSuccessfulTrade } from "./database-service";
+import { handleTradeError } from "./error";
+import { getTokenPrices } from "./price-service";
+import { executeTransaction } from "./transaction-service";
 import { validatePositionSize, validateTradeParameters } from "./validation";
 
 const MAX_RETRIES = 3;
@@ -18,18 +21,24 @@ export type TradeResult = {
     position?: Position;
     success: boolean;
     error?: Error;
+    errorContext?: string;
 };
 
-// go through each trade decision and execute the trade if applicable
+/**
+ * Execute all trade decisions that require action
+ * This function has been simplified to focus on orchestration
+ * rather than implementation details
+ */
 export async function executeTradeDecisions(
     ctx: TradingContext
 ): Promise<TradeResult[]> {
-    const tradesDecisionsToExecute = ctx.tradeDecisions?.filter(
-        (d) => d.shouldOpen || d.shouldClose
-    );
+    // Filter decisions that require action
+    const tradesDecisionsToExecute =
+        ctx.tradeDecisions?.filter((d) => d.shouldOpen || d.shouldClose) || [];
 
-    elizaLogger.info(`Executing ${tradesDecisionsToExecute?.length} trades`);
+    elizaLogger.info(`Executing ${tradesDecisionsToExecute.length} trades`);
 
+    // Execute trades in parallel
     return Promise.all(
         tradesDecisionsToExecute.map((decision) =>
             executeSingleTrade(ctx, decision)
@@ -37,22 +46,27 @@ export async function executeTradeDecisions(
     );
 }
 
-// execute a single trade decision
+/**
+ * Execute a single trade decision
+ * Improved with better separation of concerns using functional services
+ */
 async function executeSingleTrade(
     ctx: TradingContext,
     decision: TradeDecision
 ): Promise<TradeResult> {
     try {
+        // Validate the trade decision
         if (!decision?.tokenPair) {
             throw new Error("Invalid trade decision: missing tokenPair");
         }
 
+        // Validate trade parameters
         await validateTrade(ctx, decision);
 
-        // execute the transaction
+        // Execute the transaction using the transaction service
         const txHash = await executeTransaction(ctx, decision);
 
-        // get the swap details from on chain data
+        // Get swap details from on-chain data
         const swapDetails = await getSwapDetails({
             connection: ctx.connection,
             txHash,
@@ -62,22 +76,52 @@ async function executeSingleTrade(
             tokenFrom: decision.tokenPair.from,
         });
 
-        // record the trade in our data
-        return await recordTrade(ctx, decision, txHash, swapDetails);
-    } catch (error) {
-        elizaLogger.error("Trade execution failed:", error);
+        // Get token prices
+        const { tokenFromPrice, tokenToPrice } = getTokenPrices(
+            ctx,
+            decision.tokenPair.from,
+            decision.tokenPair.to
+        );
 
-        // Only try to record failed transaction if we have required data
+        // Record the trade using the database service
+        const { transaction, position } = await recordSuccessfulTrade({
+            decision,
+            txHash,
+            swapDetails,
+            tokenFromPrice,
+            tokenToPrice,
+            currentPosition: decision.position,
+        });
+
+        return {
+            transaction,
+            position,
+            success: true,
+        };
+    } catch (error) {
+        // Use centralized error handling
+        const errorResult = await handleTradeError({
+            error,
+            decision,
+            context: "trade execution",
+        });
+
+        // Record the failed trade
         if (decision?.tokenPair && decision?.strategyAssignmentId) {
-            await prisma.transaction.create({
-                data: buildFailedTransactionData({
+            try {
+                await recordFailedTrade({
                     decision,
                     error,
-                }),
-            });
+                });
+            } catch (dbError) {
+                elizaLogger.error(
+                    "Failed to record transaction failure",
+                    dbError
+                );
+            }
         } else {
             elizaLogger.error(
-                "Could not record failed transaction - missing required data",
+                "Could not record failed trade - missing required data",
                 {
                     hasTokenPair: !!decision?.tokenPair,
                     hasStrategyId: !!decision?.strategyAssignmentId,
@@ -89,12 +133,13 @@ async function executeSingleTrade(
             transaction: null,
             success: false,
             error,
+            errorContext: "trade execution",
         };
     }
 }
 
 // execute a transaction on chain
-async function executeTransaction(
+async function executeBlockchainTransaction(
     ctx: TradingContext,
     decision: TradeDecision
 ): Promise<string> {
@@ -119,60 +164,6 @@ async function executeTransaction(
 
         return DUMMY_TRANSACTION_HASH;
     });
-}
-
-// record the trade in our database
-async function recordTrade(
-    ctx: TradingContext,
-    decision: TradeDecision,
-    txHash: string,
-    swapDetails: any
-): Promise<TradeResult> {
-    const { from, to } = decision.tokenPair;
-
-    const prices = getTokenPrices(ctx, from, to);
-    const transactionData = buildTransactionData({
-        decision,
-        txHash,
-        swapDetails,
-        prices,
-    });
-
-    if (decision.shouldOpen) {
-        const position = await prisma.position.create({
-            data: buildOpenPositionData({
-                decision,
-                swapDetails,
-                prices,
-                transactionData,
-            }),
-            include: { Transaction: true },
-        });
-        return {
-            transaction: position.Transaction[0],
-            position,
-            success: true,
-        };
-    } else if (decision.shouldClose) {
-        const position = await prisma.position.update({
-            where: { id: decision.position.id },
-            data: buildClosePositionData({
-                prices,
-                currentPosition: decision.position,
-                swapDetails,
-                tokenTo: to,
-            }),
-        });
-        const transaction = await prisma.transaction.create({
-            data: transactionData,
-        });
-        return { transaction, position, success: true };
-    }
-
-    const transaction = await prisma.transaction.create({
-        data: transactionData,
-    });
-    return { transaction, success: true };
 }
 
 // execute a function with retry logic
@@ -262,26 +253,6 @@ function calculateProfitLossPercentage(params: {
     const entryPrice = params.currentPosition.entryPrice || 0;
     const initialInvestment = entryAmount * entryPrice;
     return initialInvestment > 0 ? (profitLoss / initialInvestment) * 100 : 0;
-}
-
-// get the token prices from the context
-function getTokenPrices(ctx: TradingContext, tokenFrom: Token, tokenTo: Token) {
-    // Safely access price history which might not exist
-    const fromPriceHistory = ctx.priceHistory?.[tokenFrom.address];
-    const toPriceHistory = ctx.priceHistory?.[tokenTo.address];
-
-    if (!fromPriceHistory?.prices?.length || !toPriceHistory?.prices?.length) {
-        throw new Error(
-            `Missing price history for tokens ${tokenFrom.symbol} or ${tokenTo.symbol}`
-        );
-    }
-
-    const tokenFromPrice =
-        fromPriceHistory.prices[fromPriceHistory.prices.length - 1].value;
-    const tokenToPrice =
-        toPriceHistory.prices[toPriceHistory.prices.length - 1].value;
-
-    return { tokenFromPrice, tokenToPrice };
 }
 
 // build the data for a transaction

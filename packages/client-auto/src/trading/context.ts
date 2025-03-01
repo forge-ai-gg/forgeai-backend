@@ -1,5 +1,6 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { Connection } from "@solana/web3.js";
+import { SolanaAgentKit } from "solana-agent-kit";
 import { config } from "../lib/config";
 import { FORCE_PAPER_TRADING } from "../lib/constants";
 import { getAgentWalletDetails } from "../lib/get-character-details";
@@ -45,14 +46,13 @@ export async function initializeTradingContext({
         const { AgentTradingStrategy, ...cleanedAssignment } =
             agentStrategyAssignment;
 
-        // set up sak
-        // const solanaAgent = new SolanaAgentKit(
-        //     privateKey,
-        //     config.SOLANA_RPC_URL,
-        //     {
-        //         OPENAI_API_KEY: config.OPENAI_API_KEY,
-        //     }
-        // );
+        const solanaAgent = new SolanaAgentKit(
+            privateKey,
+            config.SOLANA_RPC_URL,
+            {
+                OPENAI_API_KEY: config.OPENAI_API_KEY,
+            }
+        );
 
         // When creating context, mark non-serializable properties
         const ctx: TradingContext = {
