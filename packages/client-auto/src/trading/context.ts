@@ -64,7 +64,7 @@ export async function initializeTradingContext({
             tradingStrategyConfig,
             privateKey,
             publicKey,
-            solanaAgent: undefined,
+            solanaAgent,
             // handle the case where the trading strategy is a paper trading strategy
             isPaperTrading:
                 cleanedAssignment.isPaperTrading || FORCE_PAPER_TRADING,

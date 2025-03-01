@@ -24,8 +24,21 @@ export async function executeTransaction(
 
         // Execute the actual blockchain transaction with retry logic
         return await executeWithRetry(async () => {
-            // Implement actual blockchain transaction logic here
-            // This would interact with the blockchain via ctx.solanaAgent or similar
+            // use sak to create a trade transaction
+            const tradeTx = await ctx.solanaAgent.trade(
+                new PublicKey(decision.tokenPair.from.address),
+                decision.amount,
+                new PublicKey(decision.tokenPair.to.address)
+            );
+
+            // get the transaction details
+            const txDetails = await ctx.connection.getTransaction(tradeTx, {
+                maxSupportedTransactionVersion: 0,
+            });
+
+            if (!txDetails) {
+                throw new Error("Transaction failed to confirm");
+            }
 
             // For now, return a dummy hash (replace with actual implementation)
             return DUMMY_TRANSACTION_HASH;

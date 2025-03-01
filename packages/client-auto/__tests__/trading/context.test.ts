@@ -16,11 +16,14 @@ vi.mock("@solana/web3.js", () => ({
     })),
 }));
 
-vi.mock("solana-agent-kit", () => ({
-    SolanaAgentKit: vi.fn().mockImplementation(() => ({
-        // Mock SolanaAgentKit methods
-    })),
-}));
+// Move the SolanaAgentKit mock implementation to the vi.mock call
+vi.mock("solana-agent-kit", () => {
+    return {
+        SolanaAgentKit: vi.fn().mockImplementation(() => ({
+            trade: vi.fn(),
+        })),
+    };
+});
 
 vi.mock("../../src/lib/prisma", () => ({
     prisma: {
@@ -39,6 +42,9 @@ vi.mock("@elizaos/core", () => ({
         error: vi.fn(),
     },
 }));
+
+// Import after mocking
+const { SolanaAgentKit } = await import("solana-agent-kit");
 
 describe("initializeTradingContext", () => {
     // Setup common test variables
@@ -182,7 +188,7 @@ describe("initializeTradingContext", () => {
             tradingStrategyConfig: mockTradingStrategyConfig,
             privateKey: mockPrivateKey,
             publicKey: mockPublicKey,
-            solanaAgent: undefined,
+            solanaAgent: expect.anything(),
             isPaperTrading: false,
         });
     });
