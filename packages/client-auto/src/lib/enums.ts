@@ -31,3 +31,9 @@ export enum EnumPositionStatus {
 export enum EnumStrategyType {
     RSI = "rsi",
 }
+
+export enum SolanaChainId {
+    MAINNET = 101,
+    DEVNET = 103,
+    TESTNET = 102,
+}

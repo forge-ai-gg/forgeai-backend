@@ -1,4 +1,5 @@
 import { elizaLogger } from "@elizaos/core";
+import { PublicKey } from "@solana/web3.js";
 import { TradingContext } from "../types/trading-context";
 import { TradeDecision } from "../types/trading-decision";
 
@@ -32,9 +33,12 @@ export async function executeTransaction(
             );
 
             // get the transaction details
-            const txDetails = await ctx.connection.getTransaction(tradeTx, {
-                maxSupportedTransactionVersion: 0,
-            });
+            const txDetails = await ctx.solanaAgent.connection.getTransaction(
+                tradeTx,
+                {
+                    maxSupportedTransactionVersion: 0,
+                }
+            );
 
             if (!txDetails) {
                 throw new Error("Transaction failed to confirm");

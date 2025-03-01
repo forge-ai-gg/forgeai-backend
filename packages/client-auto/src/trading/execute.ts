@@ -1,5 +1,6 @@
 import { elizaLogger } from "@elizaos/core";
 import { Position, Transaction } from "@prisma/client";
+import { PublicKey } from "@solana/web3.js";
 import { EnumTradeStatus, EnumTradeType } from "../lib/enums";
 import { getSwapDetails } from "../lib/solana.utils";
 import { Token } from "../types/trading-config";
@@ -68,7 +69,7 @@ async function executeSingleTrade(
 
         // Get swap details from on-chain data
         const swapDetails = await getSwapDetails({
-            connection: ctx.connection,
+            connection: ctx.solanaAgent.connection,
             txHash,
             isPaperTrading: ctx.isPaperTrading,
             amountToTrade: decision.amount,
@@ -148,19 +149,22 @@ async function executeBlockchainTransaction(
     }
 
     return executeWithRetry(async () => {
-        // const tradeTx = await ctx.solanaAgent.trade(
-        //     new PublicKey(decision.tokenPair.from.address),
-        //     decision.amount,
-        //     new PublicKey(decision.tokenPair.to.address)
-        // );
+        const tradeTx = await ctx.solanaAgent.trade(
+            new PublicKey(decision.tokenPair.from.address),
+            decision.amount,
+            new PublicKey(decision.tokenPair.to.address)
+        );
 
-        // const txDetails = await ctx.connection.getTransaction(tradeTx, {
-        //     maxSupportedTransactionVersion: 0,
-        // });
+        const txDetails = await ctx.solanaAgent.connection.getTransaction(
+            tradeTx,
+            {
+                maxSupportedTransactionVersion: 0,
+            }
+        );
 
-        // if (!txDetails) {
-        //     throw new Error("Transaction failed to confirm");
-        // }
+        if (!txDetails) {
+            throw new Error("Transaction failed to confirm");
+        }
 
         return DUMMY_TRANSACTION_HASH;
     });

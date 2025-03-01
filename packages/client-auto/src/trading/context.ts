@@ -1,5 +1,4 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
-import { Connection } from "@solana/web3.js";
 import { SolanaAgentKit } from "solana-agent-kit";
 import { config } from "../lib/config";
 import { FORCE_PAPER_TRADING } from "../lib/constants";
@@ -20,9 +19,6 @@ export async function initializeTradingContext({
             runtime,
             cycle,
         });
-
-        // Create a connection to the Solana blockchain
-        const connection = new Connection(config.SOLANA_RPC_URL!, "confirmed");
 
         // Get the active trading strategy assignment
         const agentStrategyAssignment =
@@ -48,7 +44,7 @@ export async function initializeTradingContext({
 
         const solanaAgent = new SolanaAgentKit(
             privateKey,
-            config.SOLANA_RPC_URL,
+            config.SOLANA_RPC_URL.replace("{chain_id}", config.SOLANA_CHAIN_ID),
             {
                 OPENAI_API_KEY: config.OPENAI_API_KEY,
             }
@@ -58,7 +54,6 @@ export async function initializeTradingContext({
         const ctx: TradingContext = {
             runtime,
             cycle,
-            connection,
             agentTradingStrategy,
             agentStrategyAssignment: cleanedAssignment,
             tradingStrategyConfig,

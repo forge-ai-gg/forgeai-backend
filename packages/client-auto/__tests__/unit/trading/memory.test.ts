@@ -1,26 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as randomThoughtsModule from "../../src/forge/random-thoughts";
-import * as tradingThoughtModule from "../../src/forge/trading-thought";
-import * as utilsModule from "../../src/forge/utils";
-import { EnumMemoryType, EnumStrategyType } from "../../src/lib/enums";
+import * as randomThoughtsModule from "../../../src/forge/random-thoughts";
+import * as tradingThoughtModule from "../../../src/forge/trading-thought";
+import * as utilsModule from "../../../src/forge/utils";
+import { EnumMemoryType, EnumStrategyType } from "../../../src/lib/enums";
 import {
     createIdleMemory,
     createTradeMemory,
     recordError,
     recordMemory,
-} from "../../src/trading/memory";
-import { TradingContext } from "../../src/types/trading-context";
+} from "../../../src/trading/memory";
+import { TradingContext } from "../../../src/types/trading-context";
 
 // Mock dependencies
-vi.mock("../../src/forge/random-thoughts", () => ({
+vi.mock("../../../src/forge/random-thoughts", () => ({
     generateRandomThought: vi.fn(),
 }));
 
-vi.mock("../../src/forge/trading-thought", () => ({
+vi.mock("../../../src/forge/trading-thought", () => ({
     generateTradingThought: vi.fn(),
 }));
 
-vi.mock("../../src/forge/utils", () => ({
+vi.mock("../../../src/forge/utils", () => ({
     createMemory: vi.fn(),
 }));
 
@@ -89,13 +89,17 @@ describe("memory", () => {
         vi.clearAllMocks();
 
         // Setup default mocks
-        vi.mocked(randomThoughtsModule.generateRandomThought).mockResolvedValue(
-            mockThoughtResponse
-        );
+        vi.mocked(
+            randomThoughtsModule.generateRandomThought
+        ).mockImplementation(() => Promise.resolve(mockThoughtResponse));
+
         vi.mocked(
             tradingThoughtModule.generateTradingThought
-        ).mockResolvedValue(mockThoughtResponse);
-        vi.mocked(utilsModule.createMemory).mockResolvedValue(undefined);
+        ).mockImplementation(() => Promise.resolve(mockThoughtResponse));
+
+        vi.mocked(utilsModule.createMemory).mockImplementation(() =>
+            Promise.resolve(undefined)
+        );
     });
 
     describe("recordMemory", () => {

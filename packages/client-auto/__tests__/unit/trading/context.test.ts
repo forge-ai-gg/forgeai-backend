@@ -1,13 +1,11 @@
 import { IAgentRuntime } from "@elizaos/core";
 import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
-import { Connection } from "@solana/web3.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { config } from "../../src/lib/config";
-import { EnumStrategyType } from "../../src/lib/enums";
-import * as getCharacterDetailsModule from "../../src/lib/get-character-details";
-import { prisma } from "../../src/lib/prisma";
-import { initializeTradingContext } from "../../src/trading/context";
-import { TradingStrategyConfig } from "../../src/types/trading-strategy-config";
+import { EnumStrategyType } from "../../../src/lib/enums";
+import * as getCharacterDetailsModule from "../../../src/lib/get-character-details";
+import { prisma } from "../../../src/lib/prisma";
+import { initializeTradingContext } from "../../../src/trading/context";
+import { TradingStrategyConfig } from "../../../src/types/trading-strategy-config";
 
 // Mock dependencies
 vi.mock("@solana/web3.js", () => ({
@@ -21,11 +19,12 @@ vi.mock("solana-agent-kit", () => {
     return {
         SolanaAgentKit: vi.fn().mockImplementation(() => ({
             trade: vi.fn(),
+            connection: vi.fn(),
         })),
     };
 });
 
-vi.mock("../../src/lib/prisma", () => ({
+vi.mock("../../../src/lib/prisma", () => ({
     prisma: {
         agentStrategyAssignment: {
             findFirstOrThrow: vi.fn(),
@@ -33,7 +32,7 @@ vi.mock("../../src/lib/prisma", () => ({
     },
 }));
 
-vi.mock("../../src/lib/get-character-details", () => ({
+vi.mock("../../../src/lib/get-character-details", () => ({
     getAgentWalletDetails: vi.fn(),
 }));
 
@@ -133,17 +132,22 @@ describe("initializeTradingContext", () => {
         // Setup default mocks
         vi.mocked(
             getCharacterDetailsModule.getAgentWalletDetails
-        ).mockResolvedValue({
-            privateKey: mockPrivateKey,
-            publicKey: mockPublicKey,
-        });
+        ).mockImplementation(() =>
+            Promise.resolve({
+                privateKey: mockPrivateKey,
+                publicKey: mockPublicKey,
+            })
+        );
 
+        // Fix the mock to return a proper Prisma client object that resolves correctly
         vi.mocked(
             prisma.agentStrategyAssignment.findFirstOrThrow
-        ).mockResolvedValue({
-            ...mockAgentStrategyAssignment,
-            AgentTradingStrategy: mockAgentTradingStrategy,
-        } as any);
+        ).mockImplementation(() => {
+            return Promise.resolve({
+                ...mockAgentStrategyAssignment,
+                AgentTradingStrategy: mockAgentTradingStrategy,
+            }) as any;
+        });
     });
 
     it("should initialize trading context with correct values", async () => {
@@ -161,11 +165,6 @@ describe("initializeTradingContext", () => {
             cycle: mockCycle,
         });
 
-        expect(Connection).toHaveBeenCalledWith(
-            config.SOLANA_RPC_URL,
-            "confirmed"
-        );
-
         expect(
             prisma.agentStrategyAssignment.findFirstOrThrow
         ).toHaveBeenCalledWith({
@@ -182,7 +181,6 @@ describe("initializeTradingContext", () => {
         expect(result).toEqual({
             runtime: mockRuntime,
             cycle: mockCycle,
-            connection: expect.anything(),
             agentTradingStrategy: mockAgentTradingStrategy,
             agentStrategyAssignment: mockAgentStrategyAssignment,
             tradingStrategyConfig: mockTradingStrategyConfig,

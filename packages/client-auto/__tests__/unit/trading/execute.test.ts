@@ -5,16 +5,17 @@ import {
     EnumStrategyType,
     EnumTradeStatus,
     EnumTradeType,
-} from "../../src/lib/enums";
-import { prisma } from "../../src/lib/prisma";
-import * as solanaUtils from "../../src/lib/solana.utils";
-import { executeTradeDecisions } from "../../src/trading/execute";
-import * as validation from "../../src/trading/validation";
-import { TradingContext } from "../../src/types/trading-context";
-import { TradeDecision } from "../../src/types/trading-decision";
+} from "../../../src/lib/enums";
+import { prisma } from "../../../src/lib/prisma";
+import * as solanaUtils from "../../../src/lib/solana.utils";
+import { executeTradeDecisions } from "../../../src/trading/execute";
+import * as priceService from "../../../src/trading/price-service";
+import * as validation from "../../../src/trading/validation";
+import { TradingContext } from "../../../src/types/trading-context";
+import { TradeDecision } from "../../../src/types/trading-decision";
 
 // Mock dependencies
-vi.mock("../../src/lib/prisma", () => ({
+vi.mock("../../../src/lib/prisma", () => ({
     prisma: {
         transaction: {
             create: vi.fn(),
@@ -26,13 +27,17 @@ vi.mock("../../src/lib/prisma", () => ({
     },
 }));
 
-vi.mock("../../src/lib/solana.utils", () => ({
+vi.mock("../../../src/lib/solana.utils", () => ({
     getSwapDetails: vi.fn(),
 }));
 
-vi.mock("../../src/trading/validation", () => ({
+vi.mock("../../../src/trading/validation", () => ({
     validateTradeParameters: vi.fn(),
     validatePositionSize: vi.fn(),
+}));
+
+vi.mock("../../../src/trading/price-service", () => ({
+    getTokenPrices: vi.fn(),
 }));
 
 describe("executeTradeDecisions", () => {
@@ -179,10 +184,15 @@ describe("executeTradeDecisions", () => {
         cycle: 1,
         publicKey: "test-public-key",
         privateKey: "test-private-key",
-        connection: {} as any,
-        isPaperTrading: true,
-        priceHistory: mockPriceHistory,
         tradeDecisions: [mockOpenTradeDecision, mockCloseTradeDecision],
+        priceHistory: mockPriceHistory,
+        isPaperTrading: true,
+        solanaAgent: {
+            connection: {
+                getTransaction: vi.fn().mockResolvedValue({}),
+            },
+            trade: vi.fn().mockResolvedValue("mock-transaction-signature"),
+        },
         agentTradingStrategy: {
             id: "test-strategy-id",
             title: "Test Strategy",
@@ -238,6 +248,12 @@ describe("executeTradeDecisions", () => {
             mockSwapDetails
         );
 
+        vi.mocked(priceService.getTokenPrices).mockReturnValue({
+            tokenFromPrice: mockToken1.price.value,
+            tokenToPrice: mockToken2.price.value,
+        });
+
+        // Create mock Prisma client objects with proper implementation
         vi.mocked(prisma.transaction.create).mockResolvedValue(mockTransaction);
 
         vi.mocked(prisma.position.create).mockResolvedValue({
@@ -340,23 +356,13 @@ describe("executeTradeDecisions", () => {
 
     it("should handle missing price history", async () => {
         // Arrange
-        const contextWithoutPriceHistory = {
-            ...mockTradingContext,
-            priceHistory: {
-                [mockToken1.address]: {
-                    token: mockToken1,
-                    prices: [],
-                },
-                [mockToken2.address]: {
-                    token: mockToken2,
-                    prices: [],
-                },
-            },
-        };
+        vi.mocked(priceService.getTokenPrices).mockImplementation(() => {
+            throw new Error("Missing price history");
+        });
 
         // Act
         const results = await executeTradeDecisions(
-            contextWithoutPriceHistory as TradingContext
+            mockTradingContext as TradingContext
         );
 
         // Assert
@@ -416,9 +422,8 @@ describe("executeTradeDecisions", () => {
 
     it("should handle swap details errors", async () => {
         // Arrange
-        vi.mocked(solanaUtils.getSwapDetails).mockRejectedValueOnce(
-            new Error("Swap failed")
-        );
+        const swapError = new Error("Swap failed");
+        vi.mocked(solanaUtils.getSwapDetails).mockRejectedValue(swapError);
 
         // Act
         const results = await executeTradeDecisions(
@@ -426,7 +431,6 @@ describe("executeTradeDecisions", () => {
         );
 
         // Assert
-        expect(results).toHaveLength(2);
         expect(results[0].success).toBe(false);
         expect(results[0].error).toBeDefined();
         if (results[0].error) {

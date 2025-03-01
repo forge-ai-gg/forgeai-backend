@@ -32,6 +32,10 @@ const config = cleanEnv(process.env, {
     POSTGRES_URL_NON_POOLING: str({
         desc: "PostgreSQL URL (non-pooling)",
     }),
+    SOLANA_CHAIN_ID: str({
+        desc: "Solana Chain ID",
+        default: "mainnet",
+    }),
     SOLANA_PRIVATE_KEY: str({
         desc: "Solana Private Key",
     }),
