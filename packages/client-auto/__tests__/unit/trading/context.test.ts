@@ -1,11 +1,11 @@
 import { IAgentRuntime } from "@elizaos/core";
 import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EnumStrategyType } from "../../../src/lib/enums";
-import * as getCharacterDetailsModule from "../../../src/lib/get-character-details";
-import { prisma } from "../../../src/lib/prisma";
-import { initializeTradingContext } from "../../../src/trading/context";
-import { TradingStrategyConfig } from "../../../src/types/trading-strategy-config";
+import { EnumStrategyType } from "@/lib/enums";
+import * as getCharacterDetailsModule from "@/lib/get-character-details";
+import { prisma } from "@/lib/prisma";
+import { initializeTradingContext } from "@/trading/context";
+import { TradingStrategyConfig } from "@/types/trading-strategy-config";
 
 // Mock dependencies
 vi.mock("@solana/web3.js", () => ({
@@ -24,7 +24,7 @@ vi.mock("solana-agent-kit", () => {
     };
 });
 
-vi.mock("../../../src/lib/prisma", () => ({
+vi.mock("@/lib/prisma", () => ({
     prisma: {
         agentStrategyAssignment: {
             findFirstOrThrow: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock("../../../src/lib/prisma", () => ({
     },
 }));
 
-vi.mock("../../../src/lib/get-character-details", () => ({
+vi.mock("@/lib/get-character-details", () => ({
     getAgentWalletDetails: vi.fn(),
 }));
 

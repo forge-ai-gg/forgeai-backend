@@ -1,11 +1,11 @@
 import { IAgentRuntime } from "@elizaos/core";
-import { generateRandomThought } from "../forge/random-thoughts";
-import { generateTradingThought } from "../forge/trading-thought";
-import { createMemory } from "../forge/utils";
-import { EnumMemoryType } from "../lib/enums";
-import { ThoughtResponse } from "../types/thoughts";
-import { TradingContext } from "../types/trading-context";
-import { TradingEvent } from "../types/trading-event";
+import { generateRandomThought } from "@/forge/random-thoughts";
+import { generateTradingThought } from "@/forge/trading-thought";
+import { createMemory } from "@/forge/utils";
+import { EnumMemoryType } from "@/lib/enums";
+import { ThoughtResponse } from "@/types/thoughts";
+import { TradingContext } from "@/types/trading-context";
+import { TradingEvent } from "@/types/trading-event";
 
 export async function recordMemory(
     ctx: TradingContext

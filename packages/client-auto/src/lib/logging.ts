@@ -1,5 +1,5 @@
-import { TradeResult } from "../trading/execute";
-import { TradingContext } from "../types/trading-context";
+import { TradeResult } from "@/trading/execute";
+import { TradingContext } from "@/types/trading-context";
 
 export const buildTradingContextLogMessage = (ctx: TradingContext): string => {
     const sections = [

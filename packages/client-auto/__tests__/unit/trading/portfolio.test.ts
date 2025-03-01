@@ -1,13 +1,13 @@
+import { EnumPositionStatus } from "@/lib/enums";
+import { prisma } from "@/lib/prisma";
+import { getPortfolio } from "@/trading/portfolio";
+import * as solanaModule from "@/trading/solana";
+import { WalletPortfolioItem } from "@/types/birdeye/api/wallet";
 import { Position } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EnumPositionStatus } from "../../../src/lib/enums";
-import { prisma } from "../../../src/lib/prisma";
-import { getPortfolio } from "../../../src/trading/portfolio";
-import * as solanaModule from "../../../src/trading/solana";
-import { WalletPortfolioItem } from "../../../src/types/birdeye/api/wallet";
 
 // Mock dependencies
-vi.mock("../../../src/lib/prisma", () => ({
+vi.mock("@/lib/prisma", () => ({
     prisma: {
         position: {
             findMany: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("../../../src/lib/prisma", () => ({
     },
 }));
 
-vi.mock("../../../src/trading/solana", () => ({
+vi.mock("@/trading/solana", () => ({
     getWalletPortfolio: vi.fn(),
 }));
 

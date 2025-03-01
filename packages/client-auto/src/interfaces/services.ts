@@ -1,4 +1,4 @@
-import { TimeInterval } from "../types/birdeye/api/common";
+import { TimeInterval } from "@/types/birdeye/api/common";
 
 export interface IMarketData {
     sma: number[];

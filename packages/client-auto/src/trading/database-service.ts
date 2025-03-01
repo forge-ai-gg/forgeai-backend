@@ -4,9 +4,9 @@ import {
     EnumPositionStatus,
     EnumTradeStatus,
     EnumTradeType,
-} from "../lib/enums";
-import { prisma } from "../lib/prisma";
-import { TradeDecision } from "../types/trading-decision";
+} from "@/lib/enums";
+import { prisma } from "@/lib/prisma";
+import { TradeDecision } from "@/types/trading-decision";
 
 /**
  * Record a successful trade in the database

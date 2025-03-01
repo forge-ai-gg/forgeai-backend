@@ -3,10 +3,10 @@ import {
     EnumPositionStatus,
     EnumStrategyType,
     EnumTradeStatus,
-} from "../../../src/lib/enums";
-import { buildTradingContextLogMessage } from "../../../src/lib/logging";
-import { TradeResult } from "../../../src/trading/execute";
-import { TradingContext } from "../../../src/types/trading-context";
+} from "@/lib/enums";
+import { buildTradingContextLogMessage } from "@/lib/logging";
+import { TradeResult } from "@/trading/execute";
+import { TradingContext } from "@/types/trading-context";
 
 describe("logging", () => {
     // Setup mock data for testing

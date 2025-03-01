@@ -1,26 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as randomThoughtsModule from "../../../src/forge/random-thoughts";
-import * as tradingThoughtModule from "../../../src/forge/trading-thought";
-import * as utilsModule from "../../../src/forge/utils";
-import { EnumMemoryType, EnumStrategyType } from "../../../src/lib/enums";
+import * as randomThoughtsModule from "@/forge/random-thoughts";
+import * as tradingThoughtModule from "@/forge/trading-thought";
+import * as utilsModule from "@/forge/utils";
+import { EnumMemoryType, EnumStrategyType } from "@/lib/enums";
 import {
     createIdleMemory,
     createTradeMemory,
     recordError,
     recordMemory,
-} from "../../../src/trading/memory";
-import { TradingContext } from "../../../src/types/trading-context";
+} from "@/trading/memory";
+import { TradingContext } from "@/types/trading-context";
 
 // Mock dependencies
-vi.mock("../../../src/forge/random-thoughts", () => ({
+vi.mock("@/forge/random-thoughts", () => ({
     generateRandomThought: vi.fn(),
 }));
 
-vi.mock("../../../src/forge/trading-thought", () => ({
+vi.mock("@/forge/trading-thought", () => ({
     generateTradingThought: vi.fn(),
 }));
 
-vi.mock("../../../src/forge/utils", () => ({
+vi.mock("@/forge/utils", () => ({
     createMemory: vi.fn(),
 }));
 

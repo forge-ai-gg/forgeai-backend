@@ -1,4 +1,4 @@
-import { EnumStrategyType } from "../lib/enums";
+import { EnumStrategyType } from "@/lib/enums";
 import { TimeInterval } from "./birdeye/api/common";
 import { WalletPortfolioItem } from "./birdeye/api/wallet";
 

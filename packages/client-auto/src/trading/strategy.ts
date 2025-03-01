@@ -1,10 +1,10 @@
 import { elizaLogger } from "@elizaos/core";
 import { rsi } from "technicalindicators";
-import { FORCE_CLOSE_POSITION, FORCE_OPEN_POSITION } from "../lib/constants";
-import { EnumStrategyType } from "../lib/enums";
-import { formatCurrency, formatNumber } from "../lib/formatters";
-import { TradingContext } from "../types/trading-context";
-import { TokenPair } from "../types/trading-strategy-config";
+import { FORCE_CLOSE_POSITION, FORCE_OPEN_POSITION } from "@/lib/constants";
+import { EnumStrategyType } from "@/lib/enums";
+import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { TradingContext } from "@/types/trading-context";
+import { TokenPair } from "@/types/trading-strategy-config";
 
 export type TradeEvaluationResult = {
     shouldOpen: boolean;

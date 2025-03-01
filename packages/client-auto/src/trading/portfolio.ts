@@ -1,8 +1,8 @@
 import { Position } from "@prisma/client";
-import { EnumPositionStatus } from "../lib/enums";
-import { prisma } from "../lib/prisma";
+import { EnumPositionStatus } from "@/lib/enums";
+import { prisma } from "@/lib/prisma";
 
-import { WalletPortfolioItem } from "../types/birdeye/api/wallet";
+import { WalletPortfolioItem } from "@/types/birdeye/api/wallet";
 import { getWalletPortfolio } from "./solana";
 
 export type PortfolioState = {

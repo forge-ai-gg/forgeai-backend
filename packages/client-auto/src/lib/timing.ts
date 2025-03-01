@@ -1,4 +1,4 @@
-import { TimeInterval } from "../types/birdeye/api/common";
+import { TimeInterval } from "@/types/birdeye/api/common";
 import { EnumUpdateInterval } from "./enums";
 
 export const intervalMs = (updateInterval: EnumUpdateInterval) => {

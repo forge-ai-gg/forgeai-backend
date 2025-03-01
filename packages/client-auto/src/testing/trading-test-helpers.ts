@@ -6,13 +6,13 @@ import {
 } from "@prisma/client";
 import { Connection } from "@solana/web3.js";
 // import { SolanaAgentKit } from "solana-agent-kit";
-import { EnumStrategyType } from "../src/lib/enums";
-import { TradeResult } from "../src/trading/execute";
-import { PortfolioState } from "../src/trading/portfolio";
-import { AllTokenPriceHistory } from "../src/trading/price-history";
-import { TradingContext } from "../src/types/trading-context";
-import { TradeDecision } from "../src/types/trading-decision";
-import { TradingStrategyConfig } from "../src/types/trading-strategy-config";
+import { EnumStrategyType } from "@/src/lib/enums";
+import { TradeResult } from "@/src/trading/execute";
+import { PortfolioState } from "@/src/trading/portfolio";
+import { AllTokenPriceHistory } from "@/src/trading/price-history";
+import { TradingContext } from "@/src/types/trading-context";
+import { TradeDecision } from "@/src/types/trading-decision";
+import { TradingStrategyConfig } from "@/src/types/trading-strategy-config";
 
 // Create a custom token type for testing that satisfies both Token interfaces
 interface MockToken {

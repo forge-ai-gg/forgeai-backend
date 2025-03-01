@@ -19,16 +19,16 @@ import {
     EnumStrategyType,
     EnumTradeStatus,
     EnumTradeType,
-} from "../../../src/lib/enums";
-import * as getCharacterDetailsModule from "../../../src/lib/get-character-details";
-import { prisma } from "../../../src/lib/prisma";
-import * as solanaUtils from "../../../src/lib/solana.utils";
-import { initializeTradingContext } from "../../../src/trading/context";
-import { executeTradeDecisions } from "../../../src/trading/execute";
-import * as priceService from "../../../src/trading/price-service";
-import { TradingContext } from "../../../src/types/trading-context";
-import { TradeDecision } from "../../../src/types/trading-decision";
-import { TradingStrategyConfig } from "../../../src/types/trading-strategy-config";
+} from "@/lib/enums";
+import * as getCharacterDetailsModule from "@/lib/get-character-details";
+import { prisma } from "@/lib/prisma";
+import * as solanaUtils from "@/lib/solana.utils";
+import { initializeTradingContext } from "@/trading/context";
+import { executeTradeDecisions } from "@/trading/execute";
+import * as priceService from "@/trading/price-service";
+import { TradingContext } from "@/types/trading-context";
+import { TradeDecision } from "@/types/trading-decision";
+import { TradingStrategyConfig } from "@/types/trading-strategy-config";
 
 // Mock dependencies
 vi.mock("@solana/web3.js", () => ({
@@ -53,7 +53,7 @@ vi.mock("solana-agent-kit", () => {
     };
 });
 
-vi.mock("../../../src/lib/prisma", () => ({
+vi.mock("@/lib/prisma", () => ({
     prisma: {
         agentStrategyAssignment: {
             findFirstOrThrow: vi.fn(),
@@ -69,15 +69,15 @@ vi.mock("../../../src/lib/prisma", () => ({
     },
 }));
 
-vi.mock("../../../src/lib/get-character-details", () => ({
+vi.mock("@/lib/get-character-details", () => ({
     getAgentWalletDetails: vi.fn(),
 }));
 
-vi.mock("../../../src/lib/solana.utils", () => ({
+vi.mock("@/lib/solana.utils", () => ({
     getSwapDetails: vi.fn(),
 }));
 
-vi.mock("../../../src/trading/price-service", () => ({
+vi.mock("@/trading/price-service", () => ({
     getTokenPrices: vi.fn(),
 }));
 

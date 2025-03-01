@@ -1,6 +1,6 @@
-import { TimeInterval } from "../types/birdeye/api/common";
-import { DefiHistoryPriceResponse } from "../types/birdeye/api/defi";
-import { WalletPortfolioResponse } from "../types/birdeye/api/wallet";
+import { TimeInterval } from "@/types/birdeye/api/common";
+import { DefiHistoryPriceResponse } from "@/types/birdeye/api/defi";
+import { WalletPortfolioResponse } from "@/types/birdeye/api/wallet";
 import { config } from "./config";
 export const BIRDEYE_BASE_URL = "https://public-api.birdeye.so";
 

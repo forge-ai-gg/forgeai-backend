@@ -1,6 +1,6 @@
 import { IAgentRuntime } from "@elizaos/core";
-import { PortfolioState } from "../trading/portfolio";
-import { TokenPriceHistory } from "../trading/price-history";
+import { PortfolioState } from "@/trading/portfolio";
+import { TokenPriceHistory } from "@/trading/price-history";
 import { TradeDecision } from "./trading-decision";
 
 export interface TradingEvent {

@@ -1,5 +1,5 @@
 import { Connection } from "@solana/web3.js";
-import { Token } from "../types/trading-config";
+import { Token } from "@/types/trading-config";
 import { JUPITER_PROGRAM_ID } from "./constants";
 
 interface TokenBalance {

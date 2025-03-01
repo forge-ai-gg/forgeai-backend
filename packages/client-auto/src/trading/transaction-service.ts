@@ -1,7 +1,7 @@
 import { elizaLogger } from "@elizaos/core";
 import { PublicKey } from "@solana/web3.js";
-import { TradingContext } from "../types/trading-context";
-import { TradeDecision } from "../types/trading-decision";
+import { TradingContext } from "@/types/trading-context";
+import { TradeDecision } from "@/types/trading-decision";
 
 const MAX_RETRIES = 3;
 const BACKOFF_BASE = 1000; // ms

@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as birdeyeModule from "../../../src/lib/birdeye";
-import { EnumStrategyType } from "../../../src/lib/enums";
-import * as timingModule from "../../../src/lib/timing";
-import { getPriceHistory } from "../../../src/trading/price-history";
-import { TimeInterval } from "../../../src/types/birdeye/api/common";
-import { DefiHistoryPriceItem } from "../../../src/types/birdeye/api/defi";
-import { TradingStrategyConfig } from "../../../src/types/trading-strategy-config";
+import * as birdeyeModule from "@/lib/birdeye";
+import { EnumStrategyType } from "@/lib/enums";
+import * as timingModule from "@/lib/timing";
+import { getPriceHistory } from "@/trading/price-history";
+import { TimeInterval } from "@/types/birdeye/api/common";
+import { DefiHistoryPriceItem } from "@/types/birdeye/api/defi";
+import { TradingStrategyConfig } from "@/types/trading-strategy-config";
 
 // Mock dependencies
-vi.mock("../../../src/lib/birdeye", () => ({
+vi.mock("@/lib/birdeye", () => ({
     priceHistoryUrl: vi.fn(),
     fetchPriceHistory: vi.fn(),
 }));
 
-vi.mock("../../../src/lib/timing", () => ({
+vi.mock("@/lib/timing", () => ({
     getMillisecondsForTimeInterval: vi.fn(),
 }));
 

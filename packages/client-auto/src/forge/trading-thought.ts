@@ -4,7 +4,7 @@ import {
     elizaLogger,
     generateMessageResponse,
 } from "@elizaos/core";
-import { ThoughtResponse } from "../types/thoughts";
+import { ThoughtResponse } from "@/types/thoughts";
 import { cleanResponseText } from "./utils";
 
 // export const logTradingThought = async (runtime: IAgentRuntime) => {

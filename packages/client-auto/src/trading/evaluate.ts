@@ -1,6 +1,6 @@
-import { TradingContext } from "../types/trading-context";
-import { TradeDecision } from "../types/trading-decision";
-import { TokenPair } from "../types/trading-strategy-config";
+import { TradingContext } from "@/types/trading-context";
+import { TradeDecision } from "@/types/trading-decision";
+import { TokenPair } from "@/types/trading-strategy-config";
 import { calculateTradeAmount, evaluateStrategy } from "./strategy";
 
 /**

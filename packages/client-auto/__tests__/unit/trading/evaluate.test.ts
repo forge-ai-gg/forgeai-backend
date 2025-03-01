@@ -1,18 +1,18 @@
 import { Position } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EnumPositionStatus, EnumStrategyType } from "../../../src/lib/enums";
-import { evaluateTradeDecisions } from "../../../src/trading/evaluate";
-import { PortfolioState } from "../../../src/trading/portfolio";
-import { AllTokenPriceHistory } from "../../../src/trading/price-history";
-import * as strategyModule from "../../../src/trading/strategy";
-import { TimeInterval } from "../../../src/types/birdeye/api/common";
-import { DefiHistoryPriceItem } from "../../../src/types/birdeye/api/defi";
-import { WalletPortfolioItem } from "../../../src/types/birdeye/api/wallet";
-import { TradingContext } from "../../../src/types/trading-context";
+import { EnumPositionStatus, EnumStrategyType } from "@/lib/enums";
+import { evaluateTradeDecisions } from "@/trading/evaluate";
+import { PortfolioState } from "@/trading/portfolio";
+import { AllTokenPriceHistory } from "@/trading/price-history";
+import * as strategyModule from "@/trading/strategy";
+import { TimeInterval } from "@/types/birdeye/api/common";
+import { DefiHistoryPriceItem } from "@/types/birdeye/api/defi";
+import { WalletPortfolioItem } from "@/types/birdeye/api/wallet";
+import { TradingContext } from "@/types/trading-context";
 import {
     TokenPair,
     TradingStrategyConfig,
-} from "../../../src/types/trading-strategy-config";
+} from "@/types/trading-strategy-config";
 
 // Define a type for tokens in our tests
 type TestToken = {
@@ -24,7 +24,7 @@ type TestToken = {
 };
 
 // Mock dependencies
-vi.mock("../../../src/trading/strategy", () => ({
+vi.mock("@/trading/strategy", () => ({
     calculateTradeAmount: vi.fn(),
     evaluateStrategy: vi.fn(),
 }));

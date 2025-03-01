@@ -1,5 +1,5 @@
-import { Token } from "../types/trading-config";
-import { TradingContext } from "../types/trading-context";
+import { Token } from "@/types/trading-config";
+import { TradingContext } from "@/types/trading-context";
 
 /**
  * Get token prices from the trading context

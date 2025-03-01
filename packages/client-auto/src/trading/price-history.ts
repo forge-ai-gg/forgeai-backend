@@ -1,9 +1,9 @@
-import { fetchPriceHistory, priceHistoryUrl } from "../lib/birdeye";
-import { getMillisecondsForTimeInterval } from "../lib/timing";
-import { DefiHistoryPriceItem } from "../types/birdeye/api/defi";
-import { PriceHistoryParams } from "../types/market-data";
-import { Token } from "../types/trading-config";
-import { TradingStrategyConfig } from "../types/trading-strategy-config";
+import { fetchPriceHistory, priceHistoryUrl } from "@/lib/birdeye";
+import { getMillisecondsForTimeInterval } from "@/lib/timing";
+import { DefiHistoryPriceItem } from "@/types/birdeye/api/defi";
+import { PriceHistoryParams } from "@/types/market-data";
+import { Token } from "@/types/trading-config";
+import { TradingStrategyConfig } from "@/types/trading-strategy-config";
 
 export type TokenPriceHistory = {
     token: Token;

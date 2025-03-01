@@ -1,11 +1,11 @@
 import { elizaLogger } from "@elizaos/core";
 import { Position, Transaction } from "@prisma/client";
 import { PublicKey } from "@solana/web3.js";
-import { EnumTradeStatus, EnumTradeType } from "../lib/enums";
-import { getSwapDetails } from "../lib/solana.utils";
-import { Token } from "../types/trading-config";
-import { TradingContext } from "../types/trading-context";
-import { TradeDecision } from "../types/trading-decision";
+import { EnumTradeStatus, EnumTradeType } from "@/lib/enums";
+import { getSwapDetails } from "@/lib/solana.utils";
+import { Token } from "@/types/trading-config";
+import { TradingContext } from "@/types/trading-context";
+import { TradeDecision } from "@/types/trading-decision";
 import { recordFailedTrade, recordSuccessfulTrade } from "./database-service";
 import { handleTradeError } from "./error";
 import { getTokenPrices } from "./price-service";

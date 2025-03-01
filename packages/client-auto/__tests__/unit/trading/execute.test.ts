@@ -5,17 +5,17 @@ import {
     EnumStrategyType,
     EnumTradeStatus,
     EnumTradeType,
-} from "../../../src/lib/enums";
-import { prisma } from "../../../src/lib/prisma";
-import * as solanaUtils from "../../../src/lib/solana.utils";
-import { executeTradeDecisions } from "../../../src/trading/execute";
-import * as priceService from "../../../src/trading/price-service";
-import * as validation from "../../../src/trading/validation";
-import { TradingContext } from "../../../src/types/trading-context";
-import { TradeDecision } from "../../../src/types/trading-decision";
+} from "@/lib/enums";
+import { prisma } from "@/lib/prisma";
+import * as solanaUtils from "@/lib/solana.utils";
+import { executeTradeDecisions } from "@/trading/execute";
+import * as priceService from "@/trading/price-service";
+import * as validation from "@/trading/validation";
+import { TradingContext } from "@/types/trading-context";
+import { TradeDecision } from "@/types/trading-decision";
 
 // Mock dependencies
-vi.mock("../../../src/lib/prisma", () => ({
+vi.mock("@/lib/prisma", () => ({
     prisma: {
         transaction: {
             create: vi.fn(),
@@ -27,16 +27,16 @@ vi.mock("../../../src/lib/prisma", () => ({
     },
 }));
 
-vi.mock("../../../src/lib/solana.utils", () => ({
+vi.mock("@/lib/solana.utils", () => ({
     getSwapDetails: vi.fn(),
 }));
 
-vi.mock("../../../src/trading/validation", () => ({
+vi.mock("@/trading/validation", () => ({
     validateTradeParameters: vi.fn(),
     validatePositionSize: vi.fn(),
 }));
 
-vi.mock("../../../src/trading/price-service", () => ({
+vi.mock("@/trading/price-service", () => ({
     getTokenPrices: vi.fn(),
 }));
 

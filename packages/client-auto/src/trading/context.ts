@@ -1,11 +1,11 @@
 import { elizaLogger, IAgentRuntime } from "@elizaos/core";
 import { SolanaAgentKit } from "solana-agent-kit";
-import { config } from "../lib/config";
-import { FORCE_PAPER_TRADING } from "../lib/constants";
-import { getAgentWalletDetails } from "../lib/get-character-details";
-import { prisma } from "../lib/prisma";
-import { TradingContext } from "../types/trading-context";
-import { TradingStrategyConfig } from "../types/trading-strategy-config";
+import { config } from "@/lib/config";
+import { FORCE_PAPER_TRADING } from "@/lib/constants";
+import { getAgentWalletDetails } from "@/lib/get-character-details";
+import { prisma } from "@/lib/prisma";
+import { TradingContext } from "@/types/trading-context";
+import { TradingStrategyConfig } from "@/types/trading-strategy-config";
 
 export async function initializeTradingContext({
     runtime,
