@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as randomThoughtsModule from "@/forge/random-thoughts";
 import * as tradingThoughtModule from "@/forge/trading-thought";
 import * as utilsModule from "@/forge/utils";
@@ -10,6 +9,8 @@ import {
     recordMemory,
 } from "@/trading/memory";
 import { TradingContext } from "@/types/trading-context";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createMockStrategyConfig } from "../test-utils";
 
 // Mock dependencies
 vi.mock("@/forge/random-thoughts", () => ({
@@ -44,6 +45,9 @@ describe("memory", () => {
 
     const mockLogMessage = "Test log message";
 
+    // Use the utility function to create a mock strategy config
+    const mockStrategyConfig = createMockStrategyConfig(EnumStrategyType.RSI);
+
     const mockTradingContext: Partial<TradingContext> = {
         runtime: mockRuntime as any,
         cycle: 1,
@@ -76,13 +80,7 @@ describe("memory", () => {
             startDate: new Date(),
             endDate: null,
         },
-        tradingStrategyConfig: {
-            title: "Test Strategy",
-            type: EnumStrategyType.RSI,
-            tokenPairs: [],
-            timeInterval: "1D",
-            maxPortfolioAllocation: 50,
-        },
+        tradingStrategyConfig: mockStrategyConfig,
     };
 
     beforeEach(() => {

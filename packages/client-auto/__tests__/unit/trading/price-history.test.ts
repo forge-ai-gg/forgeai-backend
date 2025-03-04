@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as birdeyeModule from "@/lib/birdeye";
 import { EnumStrategyType } from "@/lib/enums";
 import * as timingModule from "@/lib/timing";
@@ -6,6 +5,8 @@ import { getPriceHistory } from "@/trading/price-history";
 import { TimeInterval } from "@/types/birdeye/api/common";
 import { DefiHistoryPriceItem } from "@/types/birdeye/api/defi";
 import { TradingStrategyConfig } from "@/types/trading-strategy-config";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createMockStrategyConfig, mockTokens } from "../test-utils";
 
 // Mock dependencies
 vi.mock("@/lib/birdeye", () => ({
@@ -22,22 +23,11 @@ describe("getPriceHistory", () => {
     const mockTimeIntervalMs = 86400000; // 1 day in milliseconds
     const mockCurrentTime = 1625097600000; // 2021-07-01T00:00:00.000Z
 
-    const mockToken1 = {
-        address: "token-address-1",
-        symbol: "TEST1",
-        logoURI: "test-logo-uri-1",
-        decimals: 9,
-        network: "solana",
-    };
+    // Use the mockTokens from test utilities
+    const mockToken1 = mockTokens.token1;
+    const mockToken2 = mockTokens.token2;
 
-    const mockToken2 = {
-        address: "token-address-2",
-        symbol: "TEST2",
-        logoURI: "test-logo-uri-2",
-        decimals: 6,
-        network: "solana",
-    };
-
+    // Define a third token for testing
     const mockToken3 = {
         address: "token-address-3",
         symbol: "TEST3",
@@ -46,10 +36,9 @@ describe("getPriceHistory", () => {
         network: "solana",
     };
 
-    const mockTradingStrategyConfig: TradingStrategyConfig = {
-        title: "Test Strategy",
-        type: EnumStrategyType.RSI,
-        tokenPairs: [
+    // Use the utility function to create a mock strategy config
+    const mockTradingStrategyConfig: TradingStrategyConfig =
+        createMockStrategyConfig(EnumStrategyType.RSI, [
             {
                 from: mockToken1,
                 to: mockToken2,
@@ -58,16 +47,9 @@ describe("getPriceHistory", () => {
                 from: mockToken2,
                 to: mockToken3,
             },
-        ],
-        timeInterval: "1D" as TimeInterval,
-        maxPortfolioAllocation: 50,
-        rsiConfig: {
-            length: 14,
-            overBought: 70,
-            overSold: 30,
-        },
-    };
+        ]);
 
+    // Define mock price history data
     const mockPriceHistoryToken1: DefiHistoryPriceItem[] = [
         { unixTime: 1625011200, value: 1.0 },
         { unixTime: 1625097600, value: 1.2 },
@@ -102,11 +84,11 @@ describe("getPriceHistory", () => {
 
         // Mock fetchPriceHistory to return different price histories for different tokens
         vi.mocked(birdeyeModule.fetchPriceHistory).mockImplementation((url) => {
-            if (url.includes("token-address-1")) {
+            if (url.includes(mockToken1.address)) {
                 return Promise.resolve(mockPriceHistoryToken1);
-            } else if (url.includes("token-address-2")) {
+            } else if (url.includes(mockToken2.address)) {
                 return Promise.resolve(mockPriceHistoryToken2);
-            } else if (url.includes("token-address-3")) {
+            } else if (url.includes(mockToken3.address)) {
                 return Promise.resolve(mockPriceHistoryToken3);
             }
             return Promise.resolve([]);
@@ -177,11 +159,11 @@ describe("getPriceHistory", () => {
     it("should handle empty price history for a token", async () => {
         // Arrange
         vi.mocked(birdeyeModule.fetchPriceHistory).mockImplementation((url) => {
-            if (url.includes("token-address-1")) {
+            if (url.includes(mockToken1.address)) {
                 return Promise.resolve([]);
-            } else if (url.includes("token-address-2")) {
+            } else if (url.includes(mockToken2.address)) {
                 return Promise.resolve(mockPriceHistoryToken2);
-            } else if (url.includes("token-address-3")) {
+            } else if (url.includes(mockToken3.address)) {
                 return Promise.resolve(mockPriceHistoryToken3);
             }
             return Promise.resolve([]);

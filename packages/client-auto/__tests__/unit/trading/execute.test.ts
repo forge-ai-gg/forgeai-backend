@@ -1,9 +1,4 @@
-import {
-    EnumPositionStatus,
-    EnumStrategyType,
-    EnumTradeStatus,
-    EnumTradeType,
-} from "@/lib/enums";
+import { EnumTradeStatus, EnumTradeType } from "@/lib/enums";
 import { prisma } from "@/lib/prisma";
 import * as solanaUtils from "@/lib/solana.utils";
 import { executeTradeDecisions } from "@/trading/execute";
@@ -11,8 +6,14 @@ import * as priceService from "@/trading/price-service";
 import * as validation from "@/trading/validation";
 import { TradingContext } from "@/types/trading-context";
 import { TradeDecision } from "@/types/trading-decision";
-import { Position, Transaction } from "@prisma/client";
+import { Transaction } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+    createBaseTradingContext,
+    createMockPosition,
+    createMockPriceHistory,
+    mockTokens,
+} from "../test-utils";
 
 // Mock dependencies
 vi.mock("@/lib/prisma", () => ({
@@ -41,35 +42,28 @@ vi.mock("@/trading/price-service", () => ({
 }));
 
 describe("executeTradeDecisions", () => {
-    // Setup common test variables
-    const mockToken1 = {
-        address: "token-address-1",
-        symbol: "TEST1",
-        logoURI: "test-logo-uri-1",
-        decimals: 9,
-        network: "solana",
+    // Setup common test variables using test utilities
+    const mockToken1 = mockTokens.token1;
+    const mockToken2 = mockTokens.token2;
+
+    // Add price and other properties needed for this test
+    const mockToken1WithPrice = {
+        ...mockToken1,
         price: { value: 1.2 },
         liquidity: { usd: 1000000 },
         volume: { h24: 500000 },
         trustScore: 80,
     };
 
-    const mockToken2 = {
-        address: "token-address-2",
-        symbol: "TEST2",
-        logoURI: "test-logo-uri-2",
-        decimals: 6,
-        network: "solana",
+    const mockToken2WithPrice = {
+        ...mockToken2,
         price: { value: 2.2 },
         liquidity: { usd: 2000000 },
         volume: { h24: 800000 },
         trustScore: 90,
     };
 
-    const mockPosition: Position = {
-        id: "position-1",
-        strategyAssignmentId: "test-assignment-id",
-        status: EnumPositionStatus.OPEN,
+    const mockPosition = createMockPosition({
         baseTokenAddress: mockToken2.address,
         baseTokenSymbol: mockToken2.symbol,
         baseTokenDecimals: mockToken2.decimals,
@@ -79,19 +73,9 @@ describe("executeTradeDecisions", () => {
         quoteTokenDecimals: mockToken1.decimals,
         quoteTokenLogoURI: mockToken1.logoURI,
         entryPrice: 1.8,
-        exitPrice: null,
         totalBaseAmount: "50",
         averageEntryPrice: 1.8,
-        realizedPnlUsd: null,
-        totalFeesUsd: 0,
-        side: "buy",
-        metadata: {},
-        openedAt: new Date(),
-        closedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userId: null,
-    };
+    });
 
     const mockTransaction: Transaction = {
         id: "transaction-1",
@@ -125,22 +109,13 @@ describe("executeTradeDecisions", () => {
         userId: null,
     };
 
-    const mockPriceHistory = {
-        [mockToken1.address]: {
-            token: mockToken1,
-            prices: [
-                { unixTime: 1625011200, value: 1.0 },
-                { unixTime: 1625097600, value: 1.2 },
-            ],
-        },
-        [mockToken2.address]: {
-            token: mockToken2,
-            prices: [
-                { unixTime: 1625011200, value: 2.0 },
-                { unixTime: 1625097600, value: 2.2 },
-            ],
-        },
-    };
+    // Use the utility function to create mock price history
+    const mockPriceHistory = createMockPriceHistory(
+        [mockToken1WithPrice, mockToken2WithPrice],
+        2,
+        1.0,
+        0.2
+    );
 
     const mockSwapDetails = {
         inputToken: mockToken1.address,
@@ -158,8 +133,8 @@ describe("executeTradeDecisions", () => {
         shouldOpen: true,
         shouldClose: false,
         tokenPair: {
-            from: mockToken1,
-            to: mockToken2,
+            from: mockToken1WithPrice,
+            to: mockToken2WithPrice,
         },
         amount: 100,
         strategyAssignmentId: "test-assignment-id",
@@ -171,8 +146,8 @@ describe("executeTradeDecisions", () => {
         shouldOpen: false,
         shouldClose: true,
         tokenPair: {
-            from: mockToken2,
-            to: mockToken1,
+            from: mockToken2WithPrice,
+            to: mockToken1WithPrice,
         },
         amount: 50,
         strategyAssignmentId: "test-assignment-id",
@@ -180,12 +155,13 @@ describe("executeTradeDecisions", () => {
         position: mockPosition,
     };
 
+    // Use the utility function to create a base trading context
+    const baseTradingContext = createBaseTradingContext(mockPriceHistory, []);
+
+    // Extend the base context with specific properties needed for this test
     const mockTradingContext: Partial<TradingContext> = {
-        cycle: 1,
-        publicKey: "test-public-key",
-        privateKey: "test-private-key",
+        ...baseTradingContext,
         tradeDecisions: [mockOpenTradeDecision, mockCloseTradeDecision],
-        priceHistory: mockPriceHistory,
         isPaperTrading: true,
         solanaAgent: {
             connection: {
@@ -193,41 +169,6 @@ describe("executeTradeDecisions", () => {
             } as any,
             trade: vi.fn().mockResolvedValue("mock-transaction-signature"),
         } as any,
-        agentTradingStrategy: {
-            id: "test-strategy-id",
-            title: "Test Strategy",
-            shortDescription: "Test strategy description",
-            longDescription: "Test strategy long description",
-            organizationId: "test-org-id",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            createdById: "test-user-id",
-            updatedById: "test-user-id",
-            class: "trading",
-            subclass: "rsi",
-            defaultConfig: {},
-        },
-        agentStrategyAssignment: {
-            id: "test-assignment-id",
-            agentId: "test-agent-id",
-            strategyId: "test-strategy-id",
-            isActive: true,
-            isPaperTrading: false,
-            config: {},
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            createdById: "test-user-id",
-            updatedById: "test-user-id",
-            startDate: new Date(),
-            endDate: null,
-        },
-        tradingStrategyConfig: {
-            title: "Test Strategy",
-            type: EnumStrategyType.RSI,
-            tokenPairs: [],
-            timeInterval: "1D",
-            maxPortfolioAllocation: 50,
-        },
     };
 
     beforeEach(() => {
@@ -249,8 +190,8 @@ describe("executeTradeDecisions", () => {
         );
 
         vi.mocked(priceService.getTokenPrices).mockReturnValue({
-            tokenFromPrice: mockToken1.price.value,
-            tokenToPrice: mockToken2.price.value,
+            tokenFromPrice: mockToken1WithPrice.price.value,
+            tokenToPrice: mockToken2WithPrice.price.value,
         });
 
         // Create mock Prisma client objects with proper implementation

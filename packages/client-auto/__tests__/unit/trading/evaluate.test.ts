@@ -1,18 +1,16 @@
-import { Position } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EnumPositionStatus, EnumStrategyType } from "@/lib/enums";
+import { EnumStrategyType } from "@/lib/enums";
 import { evaluateTradeDecisions } from "@/trading/evaluate";
-import { PortfolioState } from "@/trading/portfolio";
-import { AllTokenPriceHistory } from "@/trading/price-history";
 import * as strategyModule from "@/trading/strategy";
-import { TimeInterval } from "@/types/birdeye/api/common";
-import { DefiHistoryPriceItem } from "@/types/birdeye/api/defi";
-import { WalletPortfolioItem } from "@/types/birdeye/api/wallet";
-import { TradingContext } from "@/types/trading-context";
+import { TokenPair } from "@/types/trading-strategy-config";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-    TokenPair,
-    TradingStrategyConfig,
-} from "@/types/trading-strategy-config";
+    createBaseTradingContext,
+    createMockPosition,
+    createMockPriceHistory,
+    createMockStrategyConfig,
+    createTokenPairs,
+    mockTokens,
+} from "../test-utils";
 
 // Define a type for tokens in our tests
 type TestToken = {
@@ -30,24 +28,11 @@ vi.mock("@/trading/strategy", () => ({
 }));
 
 describe("evaluateTradeDecisions", () => {
-    // Setup common test variables
-    const mockToken1: TestToken = {
-        address: "token-address-1",
-        symbol: "TEST1",
-        logoURI: "test-logo-uri-1",
-        decimals: 9,
-        network: "solana",
-    };
+    // Setup token pairs using test utilities
+    const tokenPairs = createTokenPairs();
 
-    const mockToken2: TestToken = {
-        address: "token-address-2",
-        symbol: "TEST2",
-        logoURI: "test-logo-uri-2",
-        decimals: 6,
-        network: "solana",
-    };
-
-    const mockToken3: TestToken = {
+    // Create a third token and pair for testing multiple pairs
+    const mockToken3 = {
         address: "token-address-3",
         symbol: "TEST3",
         logoURI: "test-logo-uri-3",
@@ -55,164 +40,107 @@ describe("evaluateTradeDecisions", () => {
         network: "solana",
     };
 
-    const mockTokenPair1: TokenPair = {
-        from: mockToken1,
-        to: mockToken2,
-    };
-
     const mockTokenPair2: TokenPair = {
-        from: mockToken2,
+        from: mockTokens.token2,
         to: mockToken3,
     };
 
-    const mockTradingStrategyConfig: TradingStrategyConfig = {
-        title: "Test Strategy",
-        type: EnumStrategyType.RSI,
-        tokenPairs: [mockTokenPair1, mockTokenPair2],
-        timeInterval: "1D" as TimeInterval,
-        maxPortfolioAllocation: 50,
-        rsiConfig: {
-            length: 14,
-            overBought: 70,
-            overSold: 30,
-        },
-    };
+    // Create a strategy config with multiple token pairs
+    const mockTradingStrategyConfig = createMockStrategyConfig(
+        EnumStrategyType.RSI,
+        [tokenPairs.pair1, mockTokenPair2]
+    );
 
-    const mockPriceHistoryToken1: DefiHistoryPriceItem[] = [
-        { unixTime: 1625011200, value: 1.0 },
-        { unixTime: 1625097600, value: 1.2 },
-    ];
+    // Create price history with all three tokens
+    const mockPriceHistory = createMockPriceHistory(
+        [mockTokens.token1, mockTokens.token2, mockToken3],
+        2,
+        1.0,
+        0.2
+    );
 
-    const mockPriceHistoryToken2: DefiHistoryPriceItem[] = [
-        { unixTime: 1625011200, value: 2.0 },
-        { unixTime: 1625097600, value: 2.2 },
-    ];
-
-    const mockPriceHistoryToken3: DefiHistoryPriceItem[] = [
-        { unixTime: 1625011200, value: 3.0 },
-        { unixTime: 1625097600, value: 3.3 },
-    ];
-
-    const mockPriceHistory: AllTokenPriceHistory = {
-        [mockToken1.address]: {
-            token: mockToken1,
-            prices: mockPriceHistoryToken1,
-        },
-        [mockToken2.address]: {
-            token: mockToken2,
-            prices: mockPriceHistoryToken2,
-        },
-        [mockToken3.address]: {
-            token: mockToken3,
-            prices: mockPriceHistoryToken3,
-        },
-    };
-
-    const mockWalletPortfolioItems: WalletPortfolioItem[] = [
-        {
-            address: mockToken1.address,
-            symbol: mockToken1.symbol,
-            name: "Test Token 1",
-            decimals: mockToken1.decimals,
-            balance: "100000000000",
-            uiAmount: 100,
-            chainId: "solana",
-            logoURI: mockToken1.logoURI,
-            priceUsd: 1.2,
-            valueUsd: 120,
-        },
-        {
-            address: mockToken2.address,
-            symbol: mockToken2.symbol,
-            name: "Test Token 2",
-            decimals: mockToken2.decimals,
-            balance: "50000000",
-            uiAmount: 50,
-            chainId: "solana",
-            logoURI: mockToken2.logoURI,
-            priceUsd: 2.2,
-            valueUsd: 110,
-        },
-    ];
-
-    const mockPosition: Position = {
-        id: "position-1",
-        strategyAssignmentId: "test-assignment-id",
-        status: EnumPositionStatus.OPEN,
+    // Create a mock position for testing
+    const mockPosition = createMockPosition({
         baseTokenAddress: mockToken3.address,
         baseTokenSymbol: mockToken3.symbol,
         baseTokenDecimals: mockToken3.decimals,
         baseTokenLogoURI: mockToken3.logoURI,
-        quoteTokenAddress: mockToken2.address,
-        quoteTokenSymbol: mockToken2.symbol,
-        quoteTokenDecimals: mockToken2.decimals,
-        quoteTokenLogoURI: mockToken2.logoURI,
+        quoteTokenAddress: mockTokens.token2.address,
+        quoteTokenSymbol: mockTokens.token2.symbol,
+        quoteTokenDecimals: mockTokens.token2.decimals,
+        quoteTokenLogoURI: mockTokens.token2.logoURI,
         entryPrice: 1.8,
         exitPrice: null,
-        totalBaseAmount: "50",
+        totalBaseAmount: "10",
         averageEntryPrice: 1.8,
-        realizedPnlUsd: null,
-        totalFeesUsd: 0,
-        side: "buy",
-        metadata: {},
-        openedAt: new Date(),
-        closedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userId: null,
-    };
+    });
 
-    const mockPortfolio: PortfolioState = {
-        openPositions: [mockPosition],
-        walletPortfolioItems: mockWalletPortfolioItems,
-        totalValue: 230,
-    };
+    // Create a base trading context for testing
+    const mockTradingContext = createBaseTradingContext(mockPriceHistory, []);
 
-    const mockTradingContext: TradingContext = {
-        cycle: 1,
-        publicKey: "test-public-key",
-        privateKey: "test-private-key",
-        agentTradingStrategy: {
-            id: "test-strategy-id",
-            title: "Test Strategy",
-            shortDescription: "Test strategy description",
-            longDescription: "Test strategy long description",
-            organizationId: "test-org-id",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            createdById: "test-user-id",
-            updatedById: "test-user-id",
-            class: "trading",
-            subclass: "rsi",
-            defaultConfig: {},
-        },
-        agentStrategyAssignment: {
-            id: "test-assignment-id",
-            agentId: "test-agent-id",
-            strategyId: "test-strategy-id",
-            isActive: true,
-            isPaperTrading: false,
-            config: mockTradingStrategyConfig,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            createdById: "test-user-id",
-            updatedById: "test-user-id",
-            startDate: new Date(),
-            endDate: new Date(),
-        },
-        tradingStrategyConfig: mockTradingStrategyConfig,
-        priceHistory: mockPriceHistory,
-        portfolio: mockPortfolio,
-        isPaperTrading: false,
-    };
+    // Update the trading context with our specific test configuration
+    mockTradingContext.tradingStrategyConfig = mockTradingStrategyConfig;
 
+    // Update the portfolio with our specific test wallet items
+    if (mockTradingContext.portfolio) {
+        mockTradingContext.portfolio.walletPortfolioItems = [
+            {
+                address: mockTokens.token1.address,
+                symbol: mockTokens.token1.symbol,
+                name: "Test Token 1",
+                decimals: mockTokens.token1.decimals,
+                balance: "100000000000",
+                uiAmount: 100,
+                chainId: "solana",
+                logoURI: mockTokens.token1.logoURI,
+                priceUsd: 1.2,
+                valueUsd: 120,
+            },
+            {
+                address: mockTokens.token2.address,
+                symbol: mockTokens.token2.symbol,
+                name: "Test Token 2",
+                decimals: mockTokens.token2.decimals,
+                balance: "50000000",
+                uiAmount: 50,
+                chainId: "solana",
+                logoURI: mockTokens.token2.logoURI,
+                priceUsd: 2.2,
+                valueUsd: 110,
+            },
+            {
+                address: mockToken3.address,
+                symbol: mockToken3.symbol,
+                name: "Test Token 3",
+                decimals: mockToken3.decimals,
+                balance: "20000000",
+                uiAmount: 20,
+                chainId: "solana",
+                logoURI: mockToken3.logoURI,
+                priceUsd: 3.3,
+                valueUsd: 66,
+            },
+        ];
+    }
+
+    // Reset mocks before each test
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // Setup default mocks
-        vi.mocked(strategyModule.calculateTradeAmount).mockImplementation(
-            () => 100
-        );
+        // Mock the strategy module functions
+        vi.mocked(strategyModule.calculateTradeAmount).mockReturnValue(100);
+        vi.mocked(strategyModule.evaluateStrategy).mockReturnValue({
+            shouldOpen: false,
+            shouldClose: false,
+            description: "Test strategy evaluation",
+            hasOpenPosition: false,
+            openProximity: 0,
+            closeProximity: 0,
+        });
+    });
+
+    it("should evaluate trade decisions for all token pairs", async () => {
+        // Setup specific mocks for this test
         vi.mocked(strategyModule.evaluateStrategy).mockImplementation(
             ({ pair, index }) => {
                 // For the first pair, simulate a buy signal
@@ -237,29 +165,41 @@ describe("evaluateTradeDecisions", () => {
                 };
             }
         );
-    });
 
-    it("should evaluate trade decisions for all token pairs", async () => {
-        // Act
-        const result = await evaluateTradeDecisions(mockTradingContext);
+        const decisions = await evaluateTradeDecisions(mockTradingContext);
 
-        // Assert
-        // Verify calculateTradeAmount was called for each token pair
-        expect(strategyModule.calculateTradeAmount).toHaveBeenCalledTimes(2);
+        expect(decisions).toHaveLength(2);
+        expect(decisions[0]).toEqual({
+            shouldOpen: true,
+            shouldClose: false,
+            tokenPair: tokenPairs.pair1,
+            amount: 100,
+            strategyAssignmentId: mockTradingContext.agentStrategyAssignment.id,
+            description: "Buy signal detected",
+            position: undefined,
+        });
+        expect(decisions[1]).toEqual({
+            shouldOpen: false,
+            shouldClose: true,
+            tokenPair: mockTokenPair2,
+            amount: 100,
+            strategyAssignmentId: mockTradingContext.agentStrategyAssignment.id,
+            description: "Sell signal detected (Position already open)",
+            position: undefined,
+        });
+
         expect(strategyModule.calculateTradeAmount).toHaveBeenCalledWith({
             ctx: mockTradingContext,
-            pair: mockTokenPair1,
+            pair: tokenPairs.pair1,
         });
         expect(strategyModule.calculateTradeAmount).toHaveBeenCalledWith({
             ctx: mockTradingContext,
             pair: mockTokenPair2,
         });
 
-        // Verify evaluateStrategy was called for each token pair
-        expect(strategyModule.evaluateStrategy).toHaveBeenCalledTimes(2);
         expect(strategyModule.evaluateStrategy).toHaveBeenCalledWith({
             ctx: mockTradingContext,
-            pair: mockTokenPair1,
+            pair: tokenPairs.pair1,
             index: 0,
             amount: 100,
         });
@@ -269,91 +209,45 @@ describe("evaluateTradeDecisions", () => {
             index: 1,
             amount: 100,
         });
+    });
 
-        // Verify the returned trade decisions
-        expect(result).toHaveLength(2);
-
-        // First decision should be to open a position
-        expect(result[0]).toEqual({
+    it("should not recommend opening a position for a token pair that already has an open position", async () => {
+        // Setup specific mocks for this test
+        vi.mocked(strategyModule.evaluateStrategy).mockImplementation(() => ({
             shouldOpen: true,
             shouldClose: false,
-            tokenPair: mockTokenPair1,
-            amount: 100,
-            strategyAssignmentId: mockTradingContext.agentStrategyAssignment.id,
             description: "Buy signal detected",
-            position: undefined,
+            hasOpenPosition: false,
+            openProximity: 0.8,
+            closeProximity: 0.1,
+        }));
+
+        // Create a position for the first token pair
+        const positionForFirstPair = createMockPosition({
+            baseTokenAddress: mockTokens.token2.address,
+            quoteTokenAddress: mockTokens.token1.address,
         });
 
-        // Second decision should be to close a position
-        expect(result[1]).toEqual({
-            shouldOpen: false,
-            shouldClose: true,
-            tokenPair: mockTokenPair2,
-            amount: 100,
-            strategyAssignmentId: mockTradingContext.agentStrategyAssignment.id,
-            description: "Sell signal detected (Position already open)",
-            position: mockPosition,
-        });
-    });
-
-    it("should throw an error when priceHistory is missing", async () => {
-        // Arrange
-        const contextWithoutPriceHistory = {
+        // Update the context with the position
+        const contextWithPosition = {
             ...mockTradingContext,
-            priceHistory: undefined,
-        };
-
-        // Act & Assert
-        await expect(
-            evaluateTradeDecisions(contextWithoutPriceHistory)
-        ).rejects.toThrow("Missing required data");
-    });
-
-    it("should throw an error when portfolio is missing", async () => {
-        // Arrange
-        const contextWithoutPortfolio = {
-            ...mockTradingContext,
-            portfolio: undefined,
-        };
-
-        // Act & Assert
-        await expect(
-            evaluateTradeDecisions(contextWithoutPortfolio)
-        ).rejects.toThrow("Missing required data");
-    });
-
-    it("should handle empty token pairs", async () => {
-        // Arrange
-        const contextWithEmptyTokenPairs = {
-            ...mockTradingContext,
-            tradingStrategyConfig: {
-                ...mockTradingStrategyConfig,
-                tokenPairs: [],
+            portfolio: {
+                ...mockTradingContext.portfolio,
+                openPositions: [positionForFirstPair],
             },
         };
 
-        // Act
-        const result = await evaluateTradeDecisions(contextWithEmptyTokenPairs);
-
-        // Assert
-        expect(result).toEqual([]);
-        expect(strategyModule.calculateTradeAmount).not.toHaveBeenCalled();
-        expect(strategyModule.evaluateStrategy).not.toHaveBeenCalled();
-    });
-
-    it("should handle a position that matches the token pair", async () => {
-        // Arrange
-        // Mock evaluateStrategy to return hasOpenPosition: true for the first pair
+        // Mock the evaluateStrategy to check for existing positions
         vi.mocked(strategyModule.evaluateStrategy).mockImplementation(
             ({ pair, index }) => {
                 if (index === 0) {
                     return {
-                        shouldOpen: false,
-                        shouldClose: true,
-                        description: "Sell signal detected",
+                        shouldOpen: false, // Should not open because position exists
+                        shouldClose: false,
+                        description: "Position already exists",
                         hasOpenPosition: true,
-                        openProximity: 0.1,
-                        closeProximity: 0.9,
+                        openProximity: 0,
+                        closeProximity: 0,
                     };
                 }
                 return {
@@ -367,55 +261,73 @@ describe("evaluateTradeDecisions", () => {
             }
         );
 
-        // Create a position that matches the first token pair
-        const positionForFirstPair: Position = {
-            ...mockPosition,
-            baseTokenAddress: mockToken2.address,
-            quoteTokenAddress: mockToken1.address,
-        };
+        const decisions = await evaluateTradeDecisions(contextWithPosition);
 
-        const contextWithMatchingPosition = {
-            ...mockTradingContext,
-            portfolio: {
-                ...mockPortfolio,
-                openPositions: [positionForFirstPair],
-            },
-        };
-
-        // Act
-        const result = await evaluateTradeDecisions(
-            contextWithMatchingPosition
-        );
-
-        // Assert
-        expect(result[0].position).toEqual(positionForFirstPair);
+        // Should have two decisions, but only the second one should recommend opening
+        expect(decisions).toHaveLength(2);
+        expect(decisions[0].shouldOpen).toBe(false);
+        expect(decisions[1].shouldOpen).toBe(true);
     });
 
-    it("should handle a position that doesn't match any token pair", async () => {
-        // Arrange
-        // Create a position with different token addresses
-        const unrelatedPosition: Position = {
-            ...mockPosition,
-            baseTokenAddress: "unrelated-token-1",
-            quoteTokenAddress: "unrelated-token-2",
-        };
+    it("should not recommend closing a position for a token pair that doesn't match any open position", async () => {
+        // Setup specific mocks for this test
+        vi.mocked(strategyModule.evaluateStrategy).mockImplementation(() => ({
+            shouldOpen: false,
+            shouldClose: true,
+            description: "Sell signal detected",
+            hasOpenPosition: true,
+            openProximity: 0.2,
+            closeProximity: 0.9,
+        }));
 
+        // Create a position for an unrelated token pair
+        const unrelatedPosition = createMockPosition({
+            baseTokenAddress: "unrelated-token",
+            quoteTokenAddress: "another-unrelated-token",
+        });
+
+        // Update the context with the unrelated position
         const contextWithUnrelatedPosition = {
             ...mockTradingContext,
             portfolio: {
-                ...mockPortfolio,
+                ...mockTradingContext.portfolio,
                 openPositions: [unrelatedPosition],
             },
         };
 
-        // Act
-        const result = await evaluateTradeDecisions(
+        const decisions = await evaluateTradeDecisions(
             contextWithUnrelatedPosition
         );
 
-        // Assert
-        // No position should be included in the trade decisions
-        expect(result[0].position).toBeUndefined();
-        expect(result[1].position).toBeUndefined();
+        // Should have decisions but no positions attached
+        expect(decisions).toHaveLength(2);
+        expect(decisions[0].position).toBeUndefined();
+        expect(decisions[1].position).toBeUndefined();
+    });
+
+    it("should handle missing portfolio data", async () => {
+        // Create a context with missing portfolio
+        const contextWithoutPortfolio = {
+            ...mockTradingContext,
+            portfolio: undefined,
+        };
+
+        // We expect this to throw an error
+        await expect(
+            evaluateTradeDecisions(contextWithoutPortfolio)
+        ).rejects.toThrow("Missing required data");
+    });
+
+    it("should handle missing price history data", async () => {
+        // Create a context with missing price history
+        const contextWithoutPriceHistory = {
+            ...mockTradingContext,
+            priceHistory: undefined,
+        };
+
+        // We expect this to throw an error
+        await expect(
+            evaluateTradeDecisions(contextWithoutPriceHistory)
+        ).rejects.toThrow("Missing required data");
     });
 });

@@ -1,11 +1,12 @@
-import { IAgentRuntime } from "@elizaos/core";
-import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EnumStrategyType } from "@/lib/enums";
 import * as getCharacterDetailsModule from "@/lib/get-character-details";
 import { prisma } from "@/lib/prisma";
 import { initializeTradingContext } from "@/trading/context";
 import { TradingStrategyConfig } from "@/types/trading-strategy-config";
+import { IAgentRuntime } from "@elizaos/core";
+import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createMockStrategyConfig, createTokenPairs } from "../test-utils";
 
 // Mock dependencies
 vi.mock("@solana/web3.js", () => ({
@@ -81,35 +82,11 @@ describe("initializeTradingContext", () => {
         defaultConfig: {} as any,
     } as AgentTradingStrategy;
 
-    const mockTradingStrategyConfig: TradingStrategyConfig = {
-        title: "RSI Strategy",
-        type: EnumStrategyType.RSI,
-        tokenPairs: [
-            {
-                from: {
-                    address: "test-token-address-1",
-                    symbol: "TEST1",
-                    logoURI: "test-logo-uri-1",
-                    decimals: 9,
-                    network: "solana",
-                },
-                to: {
-                    address: "test-token-address-2",
-                    symbol: "TEST2",
-                    logoURI: "test-logo-uri-2",
-                    decimals: 6,
-                    network: "solana",
-                },
-            },
-        ],
-        timeInterval: "1D" as any, // Use a string value for TimeInterval
-        maxPortfolioAllocation: 50,
-        rsiConfig: {
-            length: 14,
-            overBought: 70,
-            overSold: 30,
-        },
-    };
+    // Use the utility function to create a mock strategy config
+    const mockTradingStrategyConfig: TradingStrategyConfig =
+        createMockStrategyConfig(EnumStrategyType.RSI, [
+            createTokenPairs().pair1,
+        ]);
 
     const mockAgentStrategyAssignment = {
         id: "test-assignment-id",

@@ -1,17 +1,15 @@
 import * as constants from "@/lib/constants";
-import { EnumStrategyType } from "@/lib/enums";
 import {
     evaluateRsiStrategy,
     generateRsiTradeReason,
 } from "@/trading/strategies/rsi";
-import { WalletPortfolioItem } from "@/types/birdeye/api/wallet";
-import { TradingContext } from "@/types/trading-context";
-import {
-    TokenPair,
-    TradingStrategyConfig,
-} from "@/types/trading-strategy-config";
 import { rsi } from "technicalindicators";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+    createBaseTradingContext,
+    createMockPosition,
+    createTokenPairs,
+} from "../../test-utils";
 
 // Mock the technicalindicators library
 vi.mock("technicalindicators", () => {
@@ -26,122 +24,11 @@ vi.mock("technicalindicators", () => {
 const mockRsi = rsi as unknown as ReturnType<typeof vi.fn>;
 
 describe("RSI Strategy", () => {
-    // Define test tokens
-    const mockToken1 = {
-        address: "token-address-1",
-        symbol: "TEST1",
-        logoURI: "test-logo-uri-1",
-        decimals: 9,
-        network: "solana",
-    };
-
-    const mockToken2 = {
-        address: "token-address-2",
-        symbol: "TEST2",
-        logoURI: "test-logo-uri-2",
-        decimals: 6,
-        network: "solana",
-    };
-
-    // Define token pair
-    const mockTokenPair: TokenPair = {
-        from: mockToken1,
-        to: mockToken2,
-    };
-
-    // Define mock price history
-    const mockPriceHistory = {
-        [mockToken1.address]: {
-            token: mockToken1,
-            prices: Array(10)
-                .fill(0)
-                .map((_, i) => ({
-                    unixTime: Date.now() / 1000 - (9 - i) * 3600,
-                    value: 100 + i,
-                    address: mockToken1.address,
-                })),
-        },
-        [mockToken2.address]: {
-            token: mockToken2,
-            prices: Array(10)
-                .fill(0)
-                .map((_, i) => ({
-                    unixTime: Date.now() / 1000 - (9 - i) * 3600,
-                    value: 10 + i,
-                    address: mockToken2.address,
-                })),
-        },
-    };
-
-    // Define mock trading strategy config
-    const mockTradingStrategyConfig: TradingStrategyConfig = {
-        title: "Test RSI Strategy",
-        type: EnumStrategyType.RSI,
-        tokenPairs: [mockTokenPair],
-        timeInterval: "1h", // Using string literal instead of enum
-        maxPortfolioAllocation: 20, // 20% of portfolio
-        rsiConfig: {
-            length: 14,
-            overBought: 70,
-            overSold: 30,
-        },
-    };
-
-    // Define mock wallet portfolio items
-    const mockWalletPortfolioItems: WalletPortfolioItem[] = [
-        {
-            address: mockToken1.address,
-            symbol: mockToken1.symbol,
-            logoURI: mockToken1.logoURI,
-            decimals: mockToken1.decimals,
-            balance: "1000",
-            uiAmount: 1000,
-            chainId: "solana",
-            priceUsd: 100,
-            valueUsd: 100000,
-        },
-        {
-            address: mockToken2.address,
-            symbol: mockToken2.symbol,
-            logoURI: mockToken2.logoURI,
-            decimals: mockToken2.decimals,
-            balance: "500",
-            uiAmount: 500,
-            chainId: "solana",
-            priceUsd: 10,
-            valueUsd: 5000,
-        },
-    ];
+    // Define token pair using the test utilities
+    const mockTokenPair = createTokenPairs().pair1;
 
     // Base trading context for tests
-    const baseTradingContext: TradingContext = {
-        cycle: 1,
-        publicKey: "test-public-key",
-        privateKey: "test-private-key",
-        portfolio: {
-            openPositions: [],
-            walletPortfolioItems: mockWalletPortfolioItems,
-            totalValue: 105000,
-        },
-        priceHistory: mockPriceHistory,
-        agentTradingStrategy: {
-            id: "test-strategy-id",
-            title: "Test Strategy",
-            description: "Test strategy description",
-            config: JSON.stringify(mockTradingStrategyConfig),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        } as any,
-        agentStrategyAssignment: {
-            id: "test-assignment-id",
-            agentId: "test-agent-id",
-            agentTradingStrategyId: "test-strategy-id",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        } as any,
-        tradingStrategyConfig: mockTradingStrategyConfig,
-        isPaperTrading: true,
-    };
+    const baseTradingContext = createBaseTradingContext();
 
     // Reset mocks before each test
     beforeEach(() => {
@@ -197,34 +84,11 @@ describe("RSI Strategy", () => {
             mockRsi.mockReturnValue([75]);
 
             // Create context with an open position
-            const contextWithOpenPosition: TradingContext = {
-                ...baseTradingContext,
-                portfolio: {
-                    ...baseTradingContext.portfolio!,
-                    openPositions: [
-                        {
-                            id: "test-position-id",
-                            baseTokenAddress: mockToken2.address,
-                            quoteTokenAddress: mockToken1.address,
-                            baseTokenSymbol: mockToken2.symbol,
-                            quoteTokenSymbol: mockToken1.symbol,
-                            baseTokenAmount: "100",
-                            quoteTokenAmount: "1000",
-                            openPrice: 10,
-                            status: "OPEN",
-                            agentStrategyAssignmentId: "test-assignment-id",
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            closedAt: null,
-                            closePrice: null,
-                            pnl: null,
-                            pnlPercentage: null,
-                            totalBaseAmount: "100",
-                            totalQuoteAmount: "1000",
-                        } as any,
-                    ],
-                },
-            };
+            const mockPosition = createMockPosition();
+            const contextWithOpenPosition = createBaseTradingContext(
+                undefined,
+                [mockPosition]
+            );
 
             const result = evaluateRsiStrategy({
                 ctx: contextWithOpenPosition,
@@ -244,34 +108,11 @@ describe("RSI Strategy", () => {
             mockRsi.mockReturnValue([60]);
 
             // Create context with an open position
-            const contextWithOpenPosition: TradingContext = {
-                ...baseTradingContext,
-                portfolio: {
-                    ...baseTradingContext.portfolio!,
-                    openPositions: [
-                        {
-                            id: "test-position-id",
-                            baseTokenAddress: mockToken2.address,
-                            quoteTokenAddress: mockToken1.address,
-                            baseTokenSymbol: mockToken2.symbol,
-                            quoteTokenSymbol: mockToken1.symbol,
-                            baseTokenAmount: "100",
-                            quoteTokenAmount: "1000",
-                            openPrice: 10,
-                            status: "OPEN",
-                            agentStrategyAssignmentId: "test-assignment-id",
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            closedAt: null,
-                            closePrice: null,
-                            pnl: null,
-                            pnlPercentage: null,
-                            totalBaseAmount: "100",
-                            totalQuoteAmount: "1000",
-                        } as any,
-                    ],
-                },
-            };
+            const mockPosition = createMockPosition();
+            const contextWithOpenPosition = createBaseTradingContext(
+                undefined,
+                [mockPosition]
+            );
 
             const result = evaluateRsiStrategy({
                 ctx: contextWithOpenPosition,
@@ -315,34 +156,11 @@ describe("RSI Strategy", () => {
             forceSpy.mockReturnValue(true);
 
             // Create context with an open position
-            const contextWithOpenPosition: TradingContext = {
-                ...baseTradingContext,
-                portfolio: {
-                    ...baseTradingContext.portfolio!,
-                    openPositions: [
-                        {
-                            id: "test-position-id",
-                            baseTokenAddress: mockToken2.address,
-                            quoteTokenAddress: mockToken1.address,
-                            baseTokenSymbol: mockToken2.symbol,
-                            quoteTokenSymbol: mockToken1.symbol,
-                            baseTokenAmount: "100",
-                            quoteTokenAmount: "1000",
-                            openPrice: 10,
-                            status: "OPEN",
-                            agentStrategyAssignmentId: "test-assignment-id",
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            closedAt: null,
-                            closePrice: null,
-                            pnl: null,
-                            pnlPercentage: null,
-                            totalBaseAmount: "100",
-                            totalQuoteAmount: "1000",
-                        } as any,
-                    ],
-                },
-            };
+            const mockPosition = createMockPosition();
+            const contextWithOpenPosition = createBaseTradingContext(
+                undefined,
+                [mockPosition]
+            );
 
             const result = evaluateRsiStrategy({
                 ctx: contextWithOpenPosition,
@@ -382,34 +200,11 @@ describe("RSI Strategy", () => {
 
         it("should calculate closeProximity correctly", () => {
             // Create context with an open position
-            const contextWithOpenPosition: TradingContext = {
-                ...baseTradingContext,
-                portfolio: {
-                    ...baseTradingContext.portfolio!,
-                    openPositions: [
-                        {
-                            id: "test-position-id",
-                            baseTokenAddress: mockToken2.address,
-                            quoteTokenAddress: mockToken1.address,
-                            baseTokenSymbol: mockToken2.symbol,
-                            quoteTokenSymbol: mockToken1.symbol,
-                            baseTokenAmount: "100",
-                            quoteTokenAmount: "1000",
-                            openPrice: 10,
-                            status: "OPEN",
-                            agentStrategyAssignmentId: "test-assignment-id",
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            closedAt: null,
-                            closePrice: null,
-                            pnl: null,
-                            pnlPercentage: null,
-                            totalBaseAmount: "100",
-                            totalQuoteAmount: "1000",
-                        } as any,
-                    ],
-                },
-            };
+            const mockPosition = createMockPosition();
+            const contextWithOpenPosition = createBaseTradingContext(
+                undefined,
+                [mockPosition]
+            );
 
             // Test with different RSI values to check proximity calculation
             const testCases = [
@@ -454,34 +249,11 @@ describe("RSI Strategy", () => {
             mockRsi.mockReturnValue([42]);
 
             // Create context with an open position
-            const contextWithOpenPosition: TradingContext = {
-                ...baseTradingContext,
-                portfolio: {
-                    ...baseTradingContext.portfolio!,
-                    openPositions: [
-                        {
-                            id: "test-position-id",
-                            baseTokenAddress: mockToken2.address,
-                            quoteTokenAddress: mockToken1.address,
-                            baseTokenSymbol: mockToken2.symbol,
-                            quoteTokenSymbol: mockToken1.symbol,
-                            baseTokenAmount: "100",
-                            quoteTokenAmount: "1000",
-                            openPrice: 10,
-                            status: "OPEN",
-                            agentStrategyAssignmentId: "test-assignment-id",
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            closedAt: null,
-                            closePrice: null,
-                            pnl: null,
-                            pnlPercentage: null,
-                            totalBaseAmount: "100",
-                            totalQuoteAmount: "1000",
-                        } as any,
-                    ],
-                },
-            };
+            const mockPosition = createMockPosition();
+            const contextWithOpenPosition = createBaseTradingContext(
+                undefined,
+                [mockPosition]
+            );
 
             const reason = generateRsiTradeReason(
                 contextWithOpenPosition,
@@ -491,7 +263,7 @@ describe("RSI Strategy", () => {
         });
 
         it("should return 'Insufficient data' when price history or portfolio is missing", () => {
-            const incompleteContext: TradingContext = {
+            const incompleteContext = {
                 ...baseTradingContext,
                 priceHistory: undefined,
             };
