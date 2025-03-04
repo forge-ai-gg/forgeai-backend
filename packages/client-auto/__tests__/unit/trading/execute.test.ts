@@ -1,5 +1,3 @@
-import { Position, Transaction } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     EnumPositionStatus,
     EnumStrategyType,
@@ -13,6 +11,8 @@ import * as priceService from "@/trading/price-service";
 import * as validation from "@/trading/validation";
 import { TradingContext } from "@/types/trading-context";
 import { TradeDecision } from "@/types/trading-decision";
+import { Position, Transaction } from "@prisma/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock dependencies
 vi.mock("@/lib/prisma", () => ({
@@ -190,9 +190,9 @@ describe("executeTradeDecisions", () => {
         solanaAgent: {
             connection: {
                 getTransaction: vi.fn().mockResolvedValue({}),
-            },
+            } as any,
             trade: vi.fn().mockResolvedValue("mock-transaction-signature"),
-        },
+        } as any,
         agentTradingStrategy: {
             id: "test-strategy-id",
             title: "Test Strategy",

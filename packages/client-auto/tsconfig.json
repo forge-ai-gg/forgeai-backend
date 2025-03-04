@@ -2,11 +2,12 @@
     "extends": "../core/tsconfig.json",
     "compilerOptions": {
         "outDir": "dist",
-        "rootDir": "src",
+        "rootDir": ".",
         "baseUrl": ".",
         "paths": {
             "@/*": ["src/*"]
-        }
+        },
+        "types": ["vitest/globals", "node"]
     },
-    "include": ["src/**/*"]
+    "include": ["src/**/*", "__tests__/**/*"]
 }
