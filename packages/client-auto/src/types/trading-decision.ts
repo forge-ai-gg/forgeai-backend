@@ -1,5 +1,5 @@
 import { Position } from "@prisma/client";
-import { Token } from "./trading-config";
+import { TokenWithPrice } from "./trading-config";
 
 export interface TradeDecision {
     shouldOpen: boolean;
@@ -7,8 +7,8 @@ export interface TradeDecision {
     amount: number;
     description: string;
     tokenPair: {
-        from: Token;
-        to: Token;
+        from: TokenWithPrice;
+        to: TokenWithPrice;
     };
     strategyAssignmentId: string;
     position?: Position; // Current position if closing

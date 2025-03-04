@@ -20,11 +20,12 @@ TRADING CONTEXT:
 --------------------------------
 Agent:        ${ctx.runtime.character.name}
 AgentId:      ${ctx.runtime.character.id}
+AgentStratAssId: ${ctx.agentStrategyAssignment.id}
 Cycle:        ${ctx.cycle}
 Wallet:       ${ctx.publicKey.toString()}
 PaperTrading: ${ctx.isPaperTrading}
 Strategy:     ${ctx.agentTradingStrategy.title} (${
-    ctx.agentStrategyAssignment.id
+    ctx.agentTradingStrategy.id
 })`;
 
 const buildPortfolioSection = (ctx: TradingContext): string => {

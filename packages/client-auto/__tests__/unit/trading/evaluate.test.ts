@@ -10,7 +10,7 @@ import {
     createMockStrategyConfig,
     createTokenPairs,
     mockTokens,
-} from "../test-utils";
+} from "../../test-utils";
 
 // Define a type for tokens in our tests
 type TestToken = {
@@ -172,7 +172,16 @@ describe("evaluateTradeDecisions", () => {
         expect(decisions[0]).toEqual({
             shouldOpen: true,
             shouldClose: false,
-            tokenPair: tokenPairs.pair1,
+            tokenPair: {
+                from: {
+                    ...tokenPairs.pair1.from,
+                    price: { value: 1 },
+                },
+                to: {
+                    ...tokenPairs.pair1.to,
+                    price: { value: 0.5 },
+                },
+            },
             amount: 100,
             strategyAssignmentId: mockTradingContext.agentStrategyAssignment.id,
             description: "Buy signal detected",
@@ -181,34 +190,89 @@ describe("evaluateTradeDecisions", () => {
         expect(decisions[1]).toEqual({
             shouldOpen: false,
             shouldClose: true,
-            tokenPair: mockTokenPair2,
+            tokenPair: {
+                from: {
+                    ...mockTokenPair2.from,
+                    price: { value: 0.5 },
+                },
+                to: {
+                    ...mockTokenPair2.to,
+                    price: { value: 0.3333333333333333 },
+                },
+            },
             amount: 100,
             strategyAssignmentId: mockTradingContext.agentStrategyAssignment.id,
             description: "Sell signal detected (Position already open)",
             position: undefined,
         });
 
-        expect(strategyModule.calculateTradeAmount).toHaveBeenCalledWith({
-            ctx: mockTradingContext,
-            pair: tokenPairs.pair1,
-        });
-        expect(strategyModule.calculateTradeAmount).toHaveBeenCalledWith({
-            ctx: mockTradingContext,
-            pair: mockTokenPair2,
-        });
+        expect(strategyModule.calculateTradeAmount).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ctx: mockTradingContext,
+                pair: expect.objectContaining({
+                    from: expect.objectContaining({
+                        address: tokenPairs.pair1.from.address,
+                        symbol: tokenPairs.pair1.from.symbol,
+                    }),
+                    to: expect.objectContaining({
+                        address: tokenPairs.pair1.to.address,
+                        symbol: tokenPairs.pair1.to.symbol,
+                    }),
+                }),
+            })
+        );
 
-        expect(strategyModule.evaluateStrategy).toHaveBeenCalledWith({
-            ctx: mockTradingContext,
-            pair: tokenPairs.pair1,
-            index: 0,
-            amount: 100,
-        });
-        expect(strategyModule.evaluateStrategy).toHaveBeenCalledWith({
-            ctx: mockTradingContext,
-            pair: mockTokenPair2,
-            index: 1,
-            amount: 100,
-        });
+        expect(strategyModule.calculateTradeAmount).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ctx: mockTradingContext,
+                pair: expect.objectContaining({
+                    from: expect.objectContaining({
+                        address: mockTokenPair2.from.address,
+                        symbol: mockTokenPair2.from.symbol,
+                    }),
+                    to: expect.objectContaining({
+                        address: mockTokenPair2.to.address,
+                        symbol: mockTokenPair2.to.symbol,
+                    }),
+                }),
+            })
+        );
+
+        expect(strategyModule.evaluateStrategy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ctx: mockTradingContext,
+                pair: expect.objectContaining({
+                    from: expect.objectContaining({
+                        address: tokenPairs.pair1.from.address,
+                        symbol: tokenPairs.pair1.from.symbol,
+                    }),
+                    to: expect.objectContaining({
+                        address: tokenPairs.pair1.to.address,
+                        symbol: tokenPairs.pair1.to.symbol,
+                    }),
+                }),
+                index: 0,
+                amount: 100,
+            })
+        );
+
+        expect(strategyModule.evaluateStrategy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ctx: mockTradingContext,
+                pair: expect.objectContaining({
+                    from: expect.objectContaining({
+                        address: mockTokenPair2.from.address,
+                        symbol: mockTokenPair2.from.symbol,
+                    }),
+                    to: expect.objectContaining({
+                        address: mockTokenPair2.to.address,
+                        symbol: mockTokenPair2.to.symbol,
+                    }),
+                }),
+                index: 1,
+                amount: 100,
+            })
+        );
     });
 
     it("should not recommend opening a position for a token pair that already has an open position", async () => {

@@ -5,7 +5,7 @@ import * as solanaModule from "@/trading/solana";
 import { WalletPortfolioItem } from "@/types/birdeye/api/wallet";
 import { Position } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockPosition, mockTokens } from "../test-utils";
+import { createMockPosition, mockTokens } from "../../test-utils";
 
 // Mock dependencies
 vi.mock("@/lib/prisma", () => ({

@@ -13,7 +13,7 @@ import {
     createMockPosition,
     createMockPriceHistory,
     mockTokens,
-} from "../test-utils";
+} from "../../test-utils";
 
 // Mock dependencies
 vi.mock("@/lib/prisma", () => ({
@@ -49,7 +49,7 @@ describe("executeTradeDecisions", () => {
     // Add price and other properties needed for this test
     const mockToken1WithPrice = {
         ...mockToken1,
-        price: { value: 1.2 },
+        price: { value: 1.2, timestamp: 1714857600 },
         liquidity: { usd: 1000000 },
         volume: { h24: 500000 },
         trustScore: 80,

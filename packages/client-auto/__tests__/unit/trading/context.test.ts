@@ -6,7 +6,7 @@ import { TradingStrategyConfig } from "@/types/trading-strategy-config";
 import { IAgentRuntime } from "@elizaos/core";
 import { AgentStrategyAssignment, AgentTradingStrategy } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockStrategyConfig, createTokenPairs } from "../test-utils";
+import { createMockStrategyConfig, createTokenPairs } from "../../test-utils";
 
 // Mock dependencies
 vi.mock("@solana/web3.js", () => ({

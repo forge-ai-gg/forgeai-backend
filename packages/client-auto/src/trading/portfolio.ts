@@ -1,8 +1,9 @@
-import { Position } from "@prisma/client";
 import { EnumPositionStatus } from "@/lib/enums";
 import { prisma } from "@/lib/prisma";
+import { Position } from "@prisma/client";
 
 import { WalletPortfolioItem } from "@/types/birdeye/api/wallet";
+import { elizaLogger } from "@elizaos/core";
 import { getWalletPortfolio } from "./solana";
 
 export type PortfolioState = {
@@ -26,6 +27,10 @@ export async function getPortfolio({
     const totalValue = walletPortfolioResponse.data.items.reduce(
         (sum, bal) => sum + bal.valueUsd,
         0
+    );
+
+    elizaLogger.info(
+        `Portfolio total value: ${openPositions.length} open positions`
     );
 
     const walletPortfolioItems = walletPortfolioResponse.data.items;

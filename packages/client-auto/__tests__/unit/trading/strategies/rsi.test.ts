@@ -9,7 +9,7 @@ import {
     createBaseTradingContext,
     createMockPosition,
     createTokenPairs,
-} from "../../test-utils";
+} from "../../../test-utils";
 
 // Mock the technicalindicators library
 vi.mock("technicalindicators", () => {

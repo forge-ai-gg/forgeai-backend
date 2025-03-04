@@ -1,18 +1,26 @@
-import { elizaLogger } from "@elizaos/core";
-import { Position, Transaction } from "@prisma/client";
 import {
     EnumPositionStatus,
     EnumTradeStatus,
     EnumTradeType,
 } from "@/lib/enums";
 import { prisma } from "@/lib/prisma";
+import { SwapDetails } from "@/lib/solana.utils";
 import { TradeDecision } from "@/types/trading-decision";
+import { elizaLogger } from "@elizaos/core";
+import { Position, Transaction } from "@prisma/client";
 
 /**
  * Record a successful trade in the database
  * This separates database interaction from trade business logic
  */
-export async function recordSuccessfulTrade(params: {
+export async function recordSuccessfulTrade({
+    decision,
+    txHash,
+    swapDetails,
+    tokenFromPrice,
+    tokenToPrice,
+    currentPosition,
+}: {
     decision: TradeDecision;
     txHash: string;
     swapDetails: any;
@@ -20,15 +28,6 @@ export async function recordSuccessfulTrade(params: {
     tokenToPrice: number;
     currentPosition?: Position;
 }): Promise<{ transaction: Transaction; position?: Position }> {
-    const {
-        decision,
-        txHash,
-        swapDetails,
-        tokenFromPrice,
-        tokenToPrice,
-        currentPosition,
-    } = params;
-
     try {
         elizaLogger.info(`Recording successful trade: ${txHash}`);
 
@@ -138,7 +137,7 @@ function buildTransactionData({
 }: {
     decision: TradeDecision;
     txHash: string;
-    swapDetails: any;
+    swapDetails: SwapDetails;
     tokenFromPrice: number;
     tokenToPrice: number;
 }): any {
@@ -166,6 +165,7 @@ function buildTransactionData({
         feesInUsd: 0, // Would calculate from swapDetails
         profitLossUsd: 0, // Would calculate for closing trades
         profitLossPercentage: 0, // Would calculate for closing trades
+
         transactionHash: txHash,
         failureReason: null,
         metadata: {},
@@ -182,7 +182,7 @@ function buildOpenPositionData({
     transaction,
 }: {
     decision: TradeDecision;
-    swapDetails: any;
+    swapDetails: SwapDetails;
     transaction: Transaction;
 }): any {
     const { tokenPair, strategyAssignmentId } = decision;
@@ -200,9 +200,9 @@ function buildOpenPositionData({
         quoteTokenDecimals: tokenFrom.decimals,
         quoteTokenLogoURI: tokenFrom.logoURI,
         entryPrice: swapDetails.executionPrice,
-        exitPrice: null,
-        totalBaseAmount: String(swapDetails.outputAmount),
         averageEntryPrice: swapDetails.executionPrice,
+        exitPrice: transaction.tokenToPrice,
+        totalBaseAmount: String(swapDetails.outputAmount),
         realizedPnlUsd: null,
         totalFeesUsd: 0,
         side: "buy",

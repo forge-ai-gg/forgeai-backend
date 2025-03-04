@@ -1,7 +1,7 @@
-import { elizaLogger } from "@elizaos/core";
-import { PublicKey } from "@solana/web3.js";
 import { TradingContext } from "@/types/trading-context";
 import { TradeDecision } from "@/types/trading-decision";
+import { elizaLogger } from "@elizaos/core";
+import { PublicKey } from "@solana/web3.js";
 
 const MAX_RETRIES = 3;
 const BACKOFF_BASE = 1000; // ms
@@ -26,7 +26,7 @@ export async function executeTransaction(
         // Execute the actual blockchain transaction with retry logic
         return await executeWithRetry(async () => {
             // use sak to create a trade transaction
-            const tradeTx = await ctx.solanaAgent.trade(
+            const txHash = await ctx.solanaAgent.trade(
                 new PublicKey(decision.tokenPair.from.address),
                 decision.amount,
                 new PublicKey(decision.tokenPair.to.address)
@@ -34,7 +34,7 @@ export async function executeTransaction(
 
             // get the transaction details
             const txDetails = await ctx.solanaAgent.connection.getTransaction(
-                tradeTx,
+                txHash,
                 {
                     maxSupportedTransactionVersion: 0,
                 }
@@ -45,7 +45,7 @@ export async function executeTransaction(
             }
 
             // For now, return a dummy hash (replace with actual implementation)
-            return DUMMY_TRANSACTION_HASH;
+            return txHash;
         });
     } catch (error) {
         throw new Error(`Transaction execution failed: ${error.message}`);

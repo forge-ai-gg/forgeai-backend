@@ -1,4 +1,5 @@
 import { EnumStrategyType } from "@/lib/enums";
+import { TokenWithPrice } from "@/types/trading-config";
 import { TimeInterval } from "./birdeye/api/common";
 import { WalletPortfolioItem } from "./birdeye/api/wallet";
 
@@ -18,6 +19,11 @@ type RSIConfig = {
 export type TokenPair = {
     from: Token;
     to: Token;
+};
+
+export type TokenPairWithPrice = TokenPair & {
+    from: TokenWithPrice;
+    to: TokenWithPrice;
 };
 
 // this is used to store the data in the db

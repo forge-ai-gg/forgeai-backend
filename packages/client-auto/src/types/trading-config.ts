@@ -1,27 +1,34 @@
 import { TimeInterval } from "./birdeye/api/common";
 
-export interface Token {
+export type Token = {
     address: string;
     symbol: string;
     decimals: number;
     logoURI?: string;
-}
+};
 
-export interface TradingPair {
+export type TokenWithPrice = Token & {
+    price: {
+        value: number;
+        timestamp?: number;
+    };
+};
+
+export type TradingPair = {
     from: Token;
     to: Token;
-}
+};
 
-export interface RsiConfig {
+export type RsiConfig = {
     length: number;
     overBought: number;
     overSold: number;
-}
+};
 
-export interface TradingConfig {
+export type TradingConfig = {
     tradingPairs: TradingPair[];
     timeInterval: TimeInterval;
     rsiConfig: RsiConfig;
     maxPositionSizeUsd: number;
     minLiquidityUsd: number;
-}
+};

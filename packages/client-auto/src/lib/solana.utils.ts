@@ -1,5 +1,5 @@
+import { TokenWithPrice } from "@/types/trading-config";
 import { Connection } from "@solana/web3.js";
-import { Token } from "@/types/trading-config";
 import { JUPITER_PROGRAM_ID } from "./constants";
 
 interface TokenBalance {
@@ -17,6 +17,7 @@ export type SwapDetails = {
     blockHeight?: number;
     timestamp?: number;
     status?: "success" | "failed";
+    executionPrice?: number;
 };
 
 const findTokenBalanceChanges = (
@@ -126,13 +127,17 @@ export const getSwapDetails = async ({
     txHash: string;
     isPaperTrading: boolean;
     amountToTrade: number;
-    tokenTo: Token;
-    tokenFrom: Token;
+    tokenTo: TokenWithPrice;
+    tokenFrom: TokenWithPrice;
 }): Promise<SwapDetails | undefined> => {
+    // if we are in paper trading mode, we need to calculate the output amount based on the price of the tokens
     if (isPaperTrading) {
+        const outputAmount =
+            (amountToTrade * tokenFrom.price.value) / tokenTo.price.value;
+
         return {
             inputAmount: amountToTrade,
-            outputAmount: amountToTrade,
+            outputAmount: outputAmount,
             inputToken: tokenFrom.address,
             outputToken: tokenTo.address,
             blockHeight: 0,

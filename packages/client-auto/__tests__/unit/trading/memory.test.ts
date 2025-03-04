@@ -10,7 +10,7 @@ import {
 } from "@/trading/memory";
 import { TradingContext } from "@/types/trading-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockStrategyConfig } from "../test-utils";
+import { createMockStrategyConfig } from "../../test-utils";
 
 // Mock dependencies
 vi.mock("@/forge/random-thoughts", () => ({
@@ -128,6 +128,12 @@ describe("memory", () => {
                 additionalContent: {
                     type: EnumMemoryType.TRADE,
                     logMessage: mockLogMessage,
+                    transactions: [
+                        {
+                            success: true,
+                            error: undefined,
+                        },
+                    ],
                 },
             });
         });
@@ -193,9 +199,26 @@ describe("memory", () => {
 
     describe("createTradeMemory", () => {
         it("should generate a trading thought and create a memory", async () => {
+            // Arrange
+            const mockTradeResults = [
+                {
+                    success: true,
+                    transaction: {
+                        id: "test-transaction-id",
+                        tokenFromSymbol: "TEST1",
+                        tokenToSymbol: "TEST2",
+                    },
+                },
+            ];
+
+            const contextWithTradeResults = {
+                ...mockTradingContext,
+                tradeResults: mockTradeResults,
+            };
+
             // Act
             const result = await createTradeMemory(
-                mockTradingContext as TradingContext
+                contextWithTradeResults as TradingContext
             );
 
             // Assert
@@ -213,15 +236,31 @@ describe("memory", () => {
                 additionalContent: {
                     type: EnumMemoryType.TRADE,
                     logMessage: mockLogMessage,
+                    transactions: mockTradeResults.map((tr) => ({
+                        ...tr.transaction,
+                        success: tr.success,
+                    })),
                 },
             });
         });
 
         it("should pass undefined runtime to dependencies when runtime is missing", async () => {
             // Arrange
+            const mockTradeResults = [
+                {
+                    success: true,
+                    transaction: {
+                        id: "test-transaction-id",
+                        tokenFromSymbol: "TEST1",
+                        tokenToSymbol: "TEST2",
+                    },
+                },
+            ];
+
             const contextWithoutRuntime = {
                 ...mockTradingContext,
                 runtime: undefined,
+                tradeResults: mockTradeResults,
             };
 
             // Act
@@ -244,6 +283,10 @@ describe("memory", () => {
                 additionalContent: {
                     type: EnumMemoryType.TRADE,
                     logMessage: mockLogMessage,
+                    transactions: mockTradeResults.map((tr) => ({
+                        ...tr.transaction,
+                        success: tr.success,
+                    })),
                 },
             });
         });

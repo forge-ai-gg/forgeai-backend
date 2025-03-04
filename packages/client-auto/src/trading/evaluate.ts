@@ -1,6 +1,6 @@
 import { TradingContext } from "@/types/trading-context";
 import { TradeDecision } from "@/types/trading-decision";
-import { TokenPair } from "@/types/trading-strategy-config";
+import { TokenPairWithPrice } from "@/types/trading-strategy-config";
 import { calculateTradeAmount, evaluateStrategy } from "./strategy";
 
 /**
@@ -14,10 +14,29 @@ export async function evaluateTradeDecisions(
     const { priceHistory, portfolio, tradingStrategyConfig } = ctx;
     if (!priceHistory || !portfolio) throw new Error("Missing required data");
 
-    const tradeDecisions: TradeDecision[] =
-        tradingStrategyConfig.tokenPairs.map((pair, index) =>
-            evaluateTradeDecision(ctx, pair, index)
-        );
+    const tokenPairsWithPrice: TokenPairWithPrice[] =
+        tradingStrategyConfig.tokenPairs.map((pair) => {
+            const tokenFromLatestPrice =
+                priceHistory[pair.from.address].prices[0].value;
+            const tokenToLatestPrice =
+                priceHistory[pair.to.address].prices[0].value;
+
+            return {
+                ...pair,
+                from: {
+                    ...pair.from,
+                    price: { value: tokenFromLatestPrice },
+                },
+                to: {
+                    ...pair.to,
+                    price: { value: tokenToLatestPrice },
+                },
+            };
+        });
+
+    const tradeDecisions: TradeDecision[] = tokenPairsWithPrice.map(
+        (pair, index) => evaluateTradeDecision({ ctx, pair, index })
+    );
 
     return tradeDecisions;
 }
@@ -29,11 +48,15 @@ export async function evaluateTradeDecisions(
  * @param index The index of the token pair in the trading strategy
  * @returns A trade decision
  */
-function evaluateTradeDecision(
-    ctx: TradingContext,
-    pair: TokenPair,
-    index: number
-): TradeDecision {
+function evaluateTradeDecision({
+    ctx,
+    pair,
+    index,
+}: {
+    ctx: TradingContext;
+    pair: TokenPairWithPrice;
+    index: number;
+}): TradeDecision {
     // Calculate the amount to trade based on portfolio allocation rules
     const amount = calculateTradeAmount({ ctx, pair });
 

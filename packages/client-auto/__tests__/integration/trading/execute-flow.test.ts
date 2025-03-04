@@ -1,3 +1,22 @@
+import {
+    EnumPositionStatus,
+    EnumStrategyType,
+    EnumTradeStatus,
+    EnumTradeType,
+} from "@/lib/enums";
+import * as getCharacterDetailsModule from "@/lib/get-character-details";
+import { prisma } from "@/lib/prisma";
+import * as solanaUtils from "@/lib/solana.utils";
+import { initializeTradingContext } from "@/trading/context";
+import {
+    recordFailedTrade,
+    recordSuccessfulTrade,
+} from "@/trading/database-service";
+import { executeTradeDecisions } from "@/trading/execute";
+import * as priceService from "@/trading/price-service";
+import { executeTransaction } from "@/trading/transaction-service";
+import { TradingContext } from "@/types/trading-context";
+import { TradeDecision } from "@/types/trading-decision";
 import { IAgentRuntime } from "@elizaos/core";
 import {
     AgentStrategyAssignment,
@@ -15,20 +34,11 @@ import {
     vi,
 } from "vitest";
 import {
-    EnumPositionStatus,
-    EnumStrategyType,
-    EnumTradeStatus,
-    EnumTradeType,
-} from "@/lib/enums";
-import * as getCharacterDetailsModule from "@/lib/get-character-details";
-import { prisma } from "@/lib/prisma";
-import * as solanaUtils from "@/lib/solana.utils";
-import { initializeTradingContext } from "@/trading/context";
-import { executeTradeDecisions } from "@/trading/execute";
-import * as priceService from "@/trading/price-service";
-import { TradingContext } from "@/types/trading-context";
-import { TradeDecision } from "@/types/trading-decision";
-import { TradingStrategyConfig } from "@/types/trading-strategy-config";
+    createMockPosition,
+    createMockStrategyConfig,
+    createTokenPairs,
+    mockTokens,
+} from "../../test-utils";
 
 // Mock dependencies
 vi.mock("@solana/web3.js", () => ({
@@ -81,6 +91,99 @@ vi.mock("@/trading/price-service", () => ({
     getTokenPrices: vi.fn(),
 }));
 
+// Add mock for transaction service
+vi.mock("@/trading/transaction-service", () => ({
+    executeTransaction: vi.fn(),
+}));
+
+// Add mock for database service
+vi.mock("@/trading/database-service", () => ({
+    recordSuccessfulTrade: vi
+        .fn()
+        .mockImplementation(({ decision, txHash, swapDetails }) => {
+            // For opening positions
+            if (decision.shouldOpen) {
+                return Promise.resolve({
+                    transaction: {
+                        id: "test-transaction-id",
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        strategyAssignmentId: decision.strategyAssignmentId,
+                        status: "pending",
+                        side: "buy",
+                        metadata: {
+                            reason: decision.description,
+                        },
+                        userId: null,
+                        timestamp: new Date(),
+                        baseTokenAddress: decision.tokenPair.from.address,
+                        baseTokenSymbol: decision.tokenPair.from.symbol,
+                        quoteTokenAddress: decision.tokenPair.to.address,
+                        quoteTokenSymbol: decision.tokenPair.to.symbol,
+                        baseAmount: String(decision.amount),
+                        quoteAmount: String(swapDetails?.outputAmount || 0),
+                        txHash,
+                        agentId: "test-agent-id",
+                        positionId: "test-position-id",
+                    },
+                    position: {
+                        id: "test-position-id",
+                        strategyAssignmentId: decision.strategyAssignmentId,
+                        status: "open",
+                        baseTokenAddress: decision.tokenPair.to.address,
+                        baseTokenSymbol: decision.tokenPair.to.symbol,
+                        quoteTokenAddress: decision.tokenPair.from.address,
+                        quoteTokenSymbol: decision.tokenPair.from.symbol,
+                        totalBaseAmount: String(swapDetails?.outputAmount || 0),
+                        openedAt: new Date(),
+                        closedAt: null,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    },
+                });
+            }
+            // For closing positions
+            else if (decision.shouldClose && decision.position) {
+                return Promise.resolve({
+                    transaction: {
+                        id: "test-transaction-id",
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        strategyAssignmentId: decision.strategyAssignmentId,
+                        status: "pending",
+                        side: "sell",
+                        metadata: {
+                            reason: decision.description,
+                        },
+                        userId: null,
+                        timestamp: new Date(),
+                        baseTokenAddress: decision.tokenPair.from.address,
+                        baseTokenSymbol: decision.tokenPair.from.symbol,
+                        quoteTokenAddress: decision.tokenPair.to.address,
+                        quoteTokenSymbol: decision.tokenPair.to.symbol,
+                        baseAmount: String(decision.amount),
+                        quoteAmount: String(swapDetails?.outputAmount || 0),
+                        txHash,
+                        agentId: "test-agent-id",
+                        positionId: decision.position.id,
+                    },
+                    position: {
+                        ...decision.position,
+                        status: "closed",
+                        closedAt: new Date(),
+                        updatedAt: new Date(),
+                    },
+                });
+            }
+            return Promise.resolve({ transaction: null, position: null });
+        }),
+    recordFailedTrade: vi
+        .fn()
+        .mockImplementation(() =>
+            Promise.resolve({ id: "test-transaction-id" })
+        ),
+}));
+
 // Import after mocking
 const { SolanaAgentKit } = await import("solana-agent-kit");
 
@@ -105,12 +208,10 @@ describe("Trading Execution Flow Integration", () => {
         "5MaiiCavjCmn9Hs1o3eznqDEhRwxo7pXiAYez7keQUviUkauRiTMD8DrESdrNjN8zd9mTmVhRvBJeg5vhyvgrAhG";
     const mockPublicKey = "test-public-key";
 
+    // Use token pairs from test-utils
+    const tokenPairs = createTokenPairs();
     const mockToken1 = {
-        address: "token-address-1",
-        symbol: "TEST1",
-        logoURI: "test-logo-uri-1",
-        decimals: 9,
-        network: "solana",
+        ...mockTokens.token1,
         price: { value: 1.2 },
         liquidity: { usd: 1000000 },
         volume: { h24: 500000 },
@@ -118,11 +219,7 @@ describe("Trading Execution Flow Integration", () => {
     };
 
     const mockToken2 = {
-        address: "token-address-2",
-        symbol: "TEST2",
-        logoURI: "test-logo-uri-2",
-        decimals: 6,
-        network: "solana",
+        ...mockTokens.token2,
         price: { value: 0.5 },
         liquidity: { usd: 800000 },
         volume: { h24: 300000 },
@@ -144,23 +241,11 @@ describe("Trading Execution Flow Integration", () => {
         defaultConfig: {} as any,
     } as AgentTradingStrategy;
 
-    const mockTradingStrategyConfig: TradingStrategyConfig = {
-        title: "RSI Strategy",
-        type: EnumStrategyType.RSI,
-        tokenPairs: [
-            {
-                from: mockToken1,
-                to: mockToken2,
-            },
-        ],
-        timeInterval: "1D" as any,
-        maxPortfolioAllocation: 50,
-        rsiConfig: {
-            length: 14,
-            overBought: 70,
-            overSold: 30,
-        },
-    };
+    // Use createMockStrategyConfig from test-utils
+    const mockTradingStrategyConfig = createMockStrategyConfig(
+        EnumStrategyType.RSI,
+        [{ from: mockToken1, to: mockToken2 }]
+    );
 
     const mockAgentStrategyAssignment = {
         id: "test-assignment-id",
@@ -177,7 +262,8 @@ describe("Trading Execution Flow Integration", () => {
         endDate: new Date(),
     } as AgentStrategyAssignment;
 
-    const mockTradeDecision: TradeDecision = {
+    // Create trade decisions for opening and closing positions
+    const openTradeDecision: TradeDecision = {
         shouldOpen: true,
         shouldClose: false,
         amount: 100,
@@ -189,26 +275,29 @@ describe("Trading Execution Flow Integration", () => {
         strategyAssignmentId: "test-assignment-id",
     };
 
-    // Mock position with the correct interface
-    const mockPosition = {
-        id: "test-position-id",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+    const closeTradeDecision: TradeDecision = {
+        shouldOpen: false,
+        shouldClose: true,
+        amount: 100,
+        description: "RSI is overbought",
+        tokenPair: {
+            from: mockToken2,
+            to: mockToken1,
+        },
         strategyAssignmentId: "test-assignment-id",
-        openedAt: new Date(),
-        closedAt: null,
-        baseTokenAddress: mockToken1.address,
-        baseTokenSymbol: mockToken1.symbol,
-        quoteTokenAddress: mockToken2.address,
-        quoteTokenSymbol: mockToken2.symbol,
+    };
+
+    // Use createMockPosition from test-utils
+    const mockPosition = createMockPosition({
+        id: "test-position-id",
+        strategyAssignmentId: "test-assignment-id",
+        baseTokenAddress: mockToken2.address,
+        baseTokenSymbol: mockToken2.symbol,
+        quoteTokenAddress: mockToken1.address,
+        quoteTokenSymbol: mockToken1.symbol,
         totalBaseAmount: "100",
-        totalQuoteAmount: "0",
         status: EnumPositionStatus.OPEN,
-        profit: null,
-        profitPercentage: null,
-        agentId: "test-agent-id",
-        userId: null,
-    } as unknown as Position;
+    }) as unknown as Position;
 
     // Mock transaction with the correct interface
     const mockTransaction = {
@@ -303,6 +392,11 @@ describe("Trading Execution Flow Integration", () => {
             status: "success",
         });
 
+        // Reset transaction service mock
+        vi.mocked(executeTransaction).mockResolvedValue(
+            "mock-transaction-signature"
+        );
+
         // Reset price service mock
         vi.mocked(priceService.getTokenPrices).mockReturnValue({
             tokenFromPrice: mockToken1.price.value,
@@ -314,155 +408,292 @@ describe("Trading Execution Flow Integration", () => {
         vi.resetAllMocks();
     });
 
-    it("should execute a buy trade decision and create a new position", async () => {
-        // Arrange
-        const tradeDecisions = [mockTradeDecision];
+    describe("Open Position Tests", () => {
+        it("should execute a buy trade decision and create a new position", async () => {
+            // Arrange
+            const tradeDecisions = [openTradeDecision];
 
-        // Update the trading context with the trade decisions
-        const ctxWithDecisions = {
-            ...tradingContext,
-            tradeDecisions,
-        };
+            // Update the trading context with the trade decisions
+            const ctxWithDecisions = {
+                ...tradingContext,
+                tradeDecisions,
+            };
 
-        // Act
-        const result = await executeTradeDecisions(ctxWithDecisions);
+            // Act
+            const result = await executeTradeDecisions(ctxWithDecisions);
 
-        // Assert
-        expect(solanaUtils.getSwapDetails).toHaveBeenCalled();
+            // Assert
+            expect(solanaUtils.getSwapDetails).toHaveBeenCalled();
+            expect(recordSuccessfulTrade).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    decision: openTradeDecision,
+                    txHash: expect.any(String),
+                })
+            );
 
-        // Skip the position.findFirst assertion since it might not be called in the actual implementation
-        // or might be called with different parameters
-
-        expect(prisma.position.create).toHaveBeenCalled();
-        expect(prisma.transaction.create).toHaveBeenCalled();
-
-        expect(result[0]).toEqual(
-            expect.objectContaining({
-                success: true,
-                transaction: expect.any(Object),
-            })
-        );
-    });
-
-    it("should execute a sell trade decision and update an existing position", async () => {
-        // Arrange
-        const sellTradeDecision: TradeDecision = {
-            shouldOpen: false,
-            shouldClose: true,
-            amount: 200,
-            description: "RSI is overbought",
-            tokenPair: {
-                from: mockToken2,
-                to: mockToken1,
-            },
-            strategyAssignmentId: "test-assignment-id",
-            position: mockPosition as unknown as Position,
-        };
-
-        // Update the trading context with the trade decisions
-        const ctxWithDecisions = {
-            ...tradingContext,
-            tradeDecisions: [sellTradeDecision],
-        };
-
-        // Mock an existing position
-        const existingPosition = {
-            ...mockPosition,
-            baseTokenAddress: mockToken2.address,
-            quoteTokenAddress: mockToken1.address,
-            baseTokenSymbol: mockToken2.symbol,
-            quoteTokenSymbol: mockToken1.symbol,
-            totalBaseAmount: "200",
-            totalQuoteAmount: "0",
-        } as unknown as Position;
-
-        vi.mocked(prisma.position.findFirst).mockResolvedValue(
-            existingPosition
-        );
-
-        // Mock the transaction for selling
-        const sellTransaction = {
-            ...mockTransaction,
-            side: EnumTradeType.SELL,
-            baseTokenAddress: mockToken2.address,
-            quoteTokenAddress: mockToken1.address,
-            baseTokenSymbol: mockToken2.symbol,
-            quoteTokenSymbol: mockToken1.symbol,
-            baseAmount: "200",
-            quoteAmount: "100",
-            metadata: {
-                reason: "RSI is overbought",
-            },
-        } as unknown as Transaction;
-
-        vi.mocked(prisma.transaction.create).mockResolvedValue(sellTransaction);
-
-        // Mock the position update
-        const closedPosition = {
-            ...existingPosition,
-            totalQuoteAmount: "100",
-            status: EnumPositionStatus.CLOSED,
-            closedAt: expect.any(Date),
-            profit: "0",
-            profitPercentage: "0",
-        } as unknown as Position;
-
-        vi.mocked(prisma.position.update).mockResolvedValue(closedPosition);
-
-        // Act
-        const result = await executeTradeDecisions(ctxWithDecisions);
-
-        // Assert
-        expect(solanaUtils.getSwapDetails).toHaveBeenCalled();
-
-        // Skip the position.findFirst assertion since it might not be called in the actual implementation
-        // or might be called with different parameters
-
-        expect(prisma.position.update).toHaveBeenCalled();
-        expect(prisma.transaction.create).toHaveBeenCalled();
-
-        expect(result[0]).toEqual(
-            expect.objectContaining({
-                success: true,
-                transaction: expect.any(Object),
-            })
-        );
-    });
-
-    it("should handle errors during trade execution", async () => {
-        // Arrange
-        const tradeDecisions = [mockTradeDecision];
-        const mockError = new Error("Missing price history");
-
-        // Update the trading context with the trade decisions
-        const ctxWithDecisions = {
-            ...tradingContext,
-            tradeDecisions,
-        };
-
-        // Mock the price service to throw an error
-        vi.mocked(priceService.getTokenPrices).mockImplementation(() => {
-            throw mockError;
+            expect(result[0]).toEqual(
+                expect.objectContaining({
+                    success: true,
+                    transaction: expect.any(Object),
+                    position: expect.any(Object),
+                })
+            );
         });
 
-        // Clear transaction create mock to ensure it's not called with error
-        vi.mocked(prisma.transaction.create).mockClear();
+        it("should handle errors when opening a position", async () => {
+            // Arrange
+            const tradeDecisions = [openTradeDecision];
+            const mockError = new Error("Failed to execute trade");
 
-        // Act
-        const result = await executeTradeDecisions(ctxWithDecisions);
+            // Update the trading context with the trade decisions
+            const ctxWithDecisions = {
+                ...tradingContext,
+                tradeDecisions,
+            };
 
-        // Assert
-        expect(result[0]).toEqual(
-            expect.objectContaining({
+            // Mock the transaction service to throw an error
+            vi.mocked(executeTransaction).mockRejectedValueOnce(mockError);
+
+            // Mock the transaction create to ensure it's not called
+            vi.mocked(prisma.transaction.create).mockClear();
+            vi.mocked(prisma.position.create).mockClear();
+
+            // Act
+            const result = await executeTradeDecisions(ctxWithDecisions);
+
+            // Assert
+            expect(result[0]).toEqual({
+                transaction: null,
                 success: false,
-                error: expect.any(Error),
-            })
-        );
+                error: mockError,
+                errorContext: "trade execution",
+            });
 
-        // Verify no position creation was performed
-        expect(prisma.position.create).not.toHaveBeenCalled();
+            // Verify no position creation was performed
+            expect(prisma.position.create).not.toHaveBeenCalled();
 
-        // The transaction.create might be called to record the failed trade
-        // but we don't need to verify that specifically
+            // Verify recordFailedTrade was called
+            expect(recordFailedTrade).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    decision: openTradeDecision,
+                    error: mockError,
+                })
+            );
+        });
+    });
+
+    describe("Close Position Tests", () => {
+        it("should execute a sell trade decision and close an existing position", async () => {
+            // Arrange
+            // Add position to the trade decision
+            const closeTradeDecisionWithPosition = {
+                ...closeTradeDecision,
+                position: mockPosition,
+            };
+
+            const tradeDecisions = [closeTradeDecisionWithPosition];
+
+            // Update the trading context with the trade decisions
+            const ctxWithDecisions = {
+                ...tradingContext,
+                tradeDecisions,
+            };
+
+            // Mock an existing position
+            vi.mocked(prisma.position.findFirst).mockResolvedValue(
+                mockPosition
+            );
+
+            // Act
+            const result = await executeTradeDecisions(ctxWithDecisions);
+
+            // Assert
+            expect(solanaUtils.getSwapDetails).toHaveBeenCalled();
+            expect(recordSuccessfulTrade).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    decision: closeTradeDecisionWithPosition,
+                    txHash: expect.any(String),
+                })
+            );
+
+            expect(result[0]).toEqual(
+                expect.objectContaining({
+                    success: true,
+                    transaction: expect.any(Object),
+                    position: expect.any(Object),
+                })
+            );
+        });
+
+        it("should handle errors when closing a position", async () => {
+            // Arrange
+            // Add position to the trade decision
+            const closeTradeDecisionWithPosition = {
+                ...closeTradeDecision,
+                position: mockPosition,
+            };
+
+            const tradeDecisions = [closeTradeDecisionWithPosition];
+            const mockError = new Error("Failed to execute trade");
+
+            // Update the trading context with the trade decisions
+            const ctxWithDecisions = {
+                ...tradingContext,
+                tradeDecisions,
+            };
+
+            // Mock an existing position
+            vi.mocked(prisma.position.findFirst).mockResolvedValue(
+                mockPosition
+            );
+
+            // Mock the transaction service to throw an error
+            vi.mocked(executeTransaction).mockRejectedValueOnce(mockError);
+
+            // Mock the transaction create to ensure it's not called
+            vi.mocked(prisma.transaction.create).mockClear();
+            vi.mocked(prisma.position.update).mockClear();
+
+            // Act
+            const result = await executeTradeDecisions(ctxWithDecisions);
+
+            // Assert
+            expect(result[0]).toEqual({
+                transaction: null,
+                success: false,
+                error: mockError,
+                errorContext: "trade execution",
+            });
+
+            // Verify no position update was performed
+            expect(prisma.position.update).not.toHaveBeenCalled();
+
+            // Verify recordFailedTrade was called
+            expect(recordFailedTrade).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    decision: closeTradeDecisionWithPosition,
+                    error: mockError,
+                })
+            );
+        });
+    });
+
+    describe("Independent Open Position Test", () => {
+        it("should open a position independently", async () => {
+            // Arrange
+            const tradeDecisions = [openTradeDecision];
+
+            // Reset mocks to ensure test isolation
+            vi.clearAllMocks();
+
+            // Setup specific mocks for this test
+            vi.mocked(executeTransaction).mockResolvedValue(
+                "mock-transaction-signature"
+            );
+            vi.mocked(solanaUtils.getSwapDetails).mockResolvedValue({
+                inputToken: mockToken1.address,
+                inputAmount: 100,
+                outputToken: mockToken2.address,
+                outputAmount: 200,
+                programId: "jupiter-program-id",
+                isJupiterSwap: true,
+                status: "success",
+            });
+            vi.mocked(priceService.getTokenPrices).mockReturnValue({
+                tokenFromPrice: mockToken1.price.value,
+                tokenToPrice: mockToken2.price.value,
+            });
+
+            // Update the trading context with the trade decisions
+            const ctxWithDecisions = {
+                ...tradingContext,
+                tradeDecisions,
+            };
+
+            // Act
+            const result = await executeTradeDecisions(ctxWithDecisions);
+
+            // Assert
+            expect(executeTransaction).toHaveBeenCalled();
+            expect(solanaUtils.getSwapDetails).toHaveBeenCalled();
+            expect(recordSuccessfulTrade).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    decision: openTradeDecision,
+                    txHash: expect.any(String),
+                })
+            );
+
+            expect(result[0]).toEqual(
+                expect.objectContaining({
+                    success: true,
+                    transaction: expect.any(Object),
+                    position: expect.any(Object),
+                })
+            );
+        });
+    });
+
+    describe("Independent Close Position Test", () => {
+        it("should close a position independently", async () => {
+            // Arrange
+            // Add position to the trade decision
+            const closeTradeDecisionWithPosition = {
+                ...closeTradeDecision,
+                position: mockPosition,
+            };
+
+            // Reset mocks to ensure test isolation
+            vi.clearAllMocks();
+
+            // Setup specific mocks for this test
+            vi.mocked(prisma.position.findFirst).mockResolvedValue(
+                mockPosition
+            );
+            vi.mocked(executeTransaction).mockResolvedValue(
+                "mock-transaction-signature"
+            );
+            vi.mocked(solanaUtils.getSwapDetails).mockResolvedValue({
+                inputToken: mockToken2.address,
+                inputAmount: 100,
+                outputToken: mockToken1.address,
+                outputAmount: 200,
+                programId: "jupiter-program-id",
+                isJupiterSwap: true,
+                status: "success",
+            });
+            vi.mocked(priceService.getTokenPrices).mockReturnValue({
+                tokenFromPrice: mockToken2.price.value,
+                tokenToPrice: mockToken1.price.value,
+            });
+
+            const tradeDecisions = [closeTradeDecisionWithPosition];
+
+            // Update the trading context with the trade decisions
+            const ctxWithDecisions = {
+                ...tradingContext,
+                tradeDecisions,
+            };
+
+            // Act
+            const result = await executeTradeDecisions(ctxWithDecisions);
+
+            // Assert
+            expect(executeTransaction).toHaveBeenCalled();
+            expect(solanaUtils.getSwapDetails).toHaveBeenCalled();
+            expect(recordSuccessfulTrade).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    decision: closeTradeDecisionWithPosition,
+                    txHash: expect.any(String),
+                })
+            );
+
+            expect(result[0]).toEqual(
+                expect.objectContaining({
+                    success: true,
+                    transaction: expect.any(Object),
+                    position: expect.any(Object),
+                })
+            );
+        });
     });
 });

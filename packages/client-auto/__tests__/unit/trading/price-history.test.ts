@@ -6,7 +6,7 @@ import { TimeInterval } from "@/types/birdeye/api/common";
 import { DefiHistoryPriceItem } from "@/types/birdeye/api/defi";
 import { TradingStrategyConfig } from "@/types/trading-strategy-config";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockStrategyConfig, mockTokens } from "../test-utils";
+import { createMockStrategyConfig, mockTokens } from "../../test-utils";
 
 // Mock dependencies
 vi.mock("@/lib/birdeye", () => ({
