@@ -167,12 +167,12 @@ async function executeTradeDecisionsStep(
 async function buildLogAndRecordMemoryStep(
     ctx: TradingContext
 ): Promise<TradingContext> {
-    // Build the log message
-    ctx.logMessage = buildTradingContextLogMessage(ctx);
-
     // Record memory
     ctx.thoughtResponse = await recordMemory(ctx);
     elizaLogger.info(`Trading memory recorded successfully`);
+
+    // Build the log message
+    ctx.logMessage = buildTradingContextLogMessage(ctx);
 
     // Log the final results
     elizaLogger.info(ctx.logMessage);
