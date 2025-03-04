@@ -58,7 +58,10 @@
 		"test:coverage": "vitest run --coverage --config vitest.config.ts",
 		"test:int:coverage": "vitest run --coverage --config vitest.integration.config.ts",
 		"test:run-unit": "scripts/run-unit-test.sh",
-		"test:run-integration": "scripts/run-integration-test.sh"
+		"test:run-integration": "scripts/run-integration-test.sh",
+		"close-position": "tsx scripts/close-position.ts",
+		"create-position": "tsx scripts/create-position.ts",
+		"simulate-strategy": "tsx scripts/simulate-strategy.ts"
 	},
 	"peerDependencies": {
 		"whatwg-url": "7.1.0"
