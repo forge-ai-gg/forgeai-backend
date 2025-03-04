@@ -1,9 +1,9 @@
 ---
 description: Creating functionality in the trading execution steps of the agents auto client workflow
-globs: packages/client-auto/*
+globs: 
 alwaysApply: false
 ---
- # Solana Trade Execution Framework Rules
+# Solana Trade Execution Framework Rules
 
 ## Development Approach
 
@@ -15,6 +15,34 @@ alwaysApply: false
 - Each trading step must have comprehensive unit tests covering edge cases
 - Use mock data and dependency injection to isolate components for testing
 - Aim for high test coverage (>80%) for all trading functionality
+- At the end of each major change to any tests, you should its working by running `pnpm test:unit` and `pnpm test:int` and looking for failures
+
+### Database Access
+- For any database operations or queries, use the TypeScript SQL query executor at `packages/client-auto/scripts/query-agents.ts`
+- This tool allows executing arbitrary SQL queries against the database using Prisma's raw query functionality
+- When information about database data is needed, ALWAYS use this tool instead of creating new database connections
+- Run queries using the shell script: `./packages/client-auto/scripts/run-query.sh 'YOUR SQL QUERY HERE'`
+- For parameterized queries use: `./packages/client-auto/scripts/run-query.sh 'SELECT * FROM "Table" WHERE "column" = $1' parameter_value`
+- The tool supports all SQL operations including SELECT, INSERT, UPDATE, and DELETE
+- Reference `packages/client-auto/prisma/schema.prisma` to understand the data structure
+- For detailed usage instructions, refer to `packages/client-auto/scripts/SQL_QUERY_README.md`
+- Example queries:
+  - List all agents: `./packages/client-auto/scripts/run-query.sh 'SELECT * FROM "Agent" LIMIT 10'`
+  - Find specific transactions: `./packages/client-auto/scripts/run-query.sh 'SELECT * FROM "Transaction" WHERE "agentId" = $1' agent_id_here`
+  - Complex joins: `./packages/client-auto/scripts/run-query.sh 'SELECT a.id, a.name, COUNT(t.id) as transaction_count FROM "Agent" a LEFT JOIN "Transaction" t ON a.id = t."agentId" GROUP BY a.id, a.name'`
+
+### Cursor IDE Database Integration
+- When a user asks for information about data in the database, Cursor should ALWAYS use the SQL query executor
+- NEVER suggest creating new database connections or writing new database query scripts
+- Instead, recommend using the existing `run-query.sh` script with appropriate SQL queries
+- For all database-related questions, first check the schema at `packages/client-auto/prisma/schema.prisma`
+- Then construct an appropriate SQL query to retrieve the requested information
+- Always use parameterized queries when dealing with user input to prevent SQL injection
+- Suggest running the query using: `./packages/client-auto/scripts/run-query.sh 'YOUR SQL QUERY'`
+- For complex data needs, suggest appropriate JOINs and aggregations in the SQL query
+- When displaying results, recommend using the JSON output format provided by the tool
+- If the user needs to modify data, suggest appropriate INSERT, UPDATE, or DELETE queries
+- For repeated queries, suggest creating a shell script that calls the query tool with different parameters
 
 ## Core Workflow
 

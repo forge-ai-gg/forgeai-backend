@@ -1,11 +1,11 @@
-import { elizaLogger } from "@elizaos/core";
-import { Position, Transaction } from "@prisma/client";
-import { PublicKey } from "@solana/web3.js";
 import { EnumTradeStatus, EnumTradeType } from "@/lib/enums";
 import { getSwapDetails } from "@/lib/solana.utils";
 import { Token } from "@/types/trading-config";
 import { TradingContext } from "@/types/trading-context";
 import { TradeDecision } from "@/types/trading-decision";
+import { elizaLogger } from "@elizaos/core";
+import { Position, Transaction } from "@prisma/client";
+import { PublicKey } from "@solana/web3.js";
 import { recordFailedTrade, recordSuccessfulTrade } from "./database-service";
 import { handleTradeError } from "./error";
 import { getTokenPrices } from "./price-service";
@@ -38,6 +38,30 @@ export async function executeTradeDecisions(
         ctx.tradeDecisions?.filter((d) => d.shouldOpen || d.shouldClose) || [];
 
     elizaLogger.info(`Executing ${tradesDecisionsToExecute.length} trades`);
+
+    // Log the entire trade decision data
+    elizaLogger.info("Trade decisions to execute:", {
+        tradeDecisions: tradesDecisionsToExecute.map((decision) => ({
+            tokenPair: {
+                from: {
+                    symbol: decision.tokenPair?.from?.symbol,
+                    address: decision.tokenPair?.from?.address,
+                    price: decision.tokenPair?.from?.price,
+                },
+                to: {
+                    symbol: decision.tokenPair?.to?.symbol,
+                    address: decision.tokenPair?.to?.address,
+                    price: decision.tokenPair?.to?.price,
+                },
+            },
+            amount: decision.amount,
+            shouldOpen: decision.shouldOpen,
+            shouldClose: decision.shouldClose,
+            strategyAssignmentId: decision.strategyAssignmentId,
+            positionId: decision.position?.id,
+            reason: "",
+        })),
+    });
 
     // Execute trades in parallel
     return Promise.all(
