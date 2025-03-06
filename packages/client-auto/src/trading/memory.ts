@@ -3,9 +3,10 @@ import { generateTradingThought } from "@/forge/trading-thought";
 import { createMemory } from "@/forge/utils";
 import { EnumMemoryType } from "@/lib/enums";
 import { ThoughtResponse } from "@/types/thoughts";
-import { TradingContext } from "@/types/trading-context";
 import { TradingEvent } from "@/types/trading-event";
 import { IAgentRuntime } from "@elizaos/core";
+import { evaluateStrategy } from "../trading/strategy";
+import { TradingContext } from "../types/trading-context";
 
 export async function recordMemory(
     ctx: TradingContext
@@ -55,12 +56,26 @@ export const createIdleMemory = async (
         details: ctx.logMessage,
     });
 
+    // Calculate the maximum proximity from all token pairs (considering both open and close)
+    const proximityValues = ctx.tradingStrategyConfig.tokenPairs.flatMap(
+        (pair, index) => {
+            const result = evaluateStrategy({ ctx, pair, index, amount: 0 });
+            return [result.openProximity, result.closeProximity];
+        }
+    );
+
+    const maxProximity = proximityValues.reduce(
+        (max, current) => Math.max(max, current),
+        0
+    );
+
     await createMemory({
         runtime: ctx.runtime,
         message: thought.text,
         additionalContent: {
             type: EnumMemoryType.IDLE,
             logMessage: ctx.logMessage,
+            proximity: maxProximity,
         },
     });
 
