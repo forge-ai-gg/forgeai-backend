@@ -42,14 +42,19 @@ export const evaluateRsiStrategy = ({
 
     // Calculate proximities to opening or closing a position
     const openProximity = hasOpenPosition
-        ? 0
-        : Math.max(0, Math.min(1, (overSold - currentRsi) / overSold));
-    const closeProximity = !hasOpenPosition
-        ? 0
+        ? 0 // No openProximity if we already have a position
+        : currentRsi <= overSold
+        ? 1 // Already at or past threshold for opening (RSI <= overSold)
         : Math.max(
               0,
-              Math.min(1, (currentRsi - overBought) / (100 - overBought))
+              Math.min(1, 1 - (currentRsi - overSold) / (50 - overSold))
           );
+
+    const closeProximity = !hasOpenPosition
+        ? 0 // No closeProximity if we don't have a position
+        : currentRsi >= overBought
+        ? 1 // Already at or past threshold for closing (RSI >= overBought)
+        : Math.max(0, Math.min(1, (currentRsi - 50) / (overBought - 50)));
 
     const shouldClose =
         (hasOpenPosition && currentRsi > overBought) || FORCE_CLOSE_POSITION;
